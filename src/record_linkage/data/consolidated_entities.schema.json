@@ -1,0 +1,110 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "consolidated_entities.schema.json",
+  "title": "Entidades consolidadas INER",
+  "description": "Entregable de consultoría INER. Arreglo de entidades: cada objeto es un cluster de registros que corresponden al mismo paciente, vinculados entre las 3 bases (Económico, Comorbilidad, Trabajo Social). Las descripciones de este schema son la fuente de verdad del entregable; el detalle por columna de los registros crudos vive en el diccionario de datos respectivo y el catálogo de métodos de comparación en metodos_comparacion.json.",
+  "type": "array",
+  "items": { "$ref": "#/$defs/entidad" },
+
+  "$defs": {
+    "entidad": {
+      "type": "object",
+      "description": "Un cluster de registros del mismo paciente.",
+      "required": ["entity_id", "cluster_size", "decision", "items", "scores"],
+      "additionalProperties": false,
+      "properties": {
+        "entity_id": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Identificador único de la entidad y del cluster."
+        },
+        "cluster_size": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Número de registros del cluster (equivale a la longitud de items)."
+        },
+        "decision": {
+          "type": ["string", "null"],
+          "default": null,
+          "description": "Veredicto manual a nivel cluster (aceptar/rechazar la entidad), null hasta la revisión. El vocabulario exacto de valores se fijará con los revisores."
+        },
+        "items": {
+          "type": "array",
+          "minItems": 1,
+          "description": "Elementos del cluster, uno por registro. Incluye también los registros duplicados de una misma base.",
+          "items": { "$ref": "#/$defs/item" }
+        },
+        "scores": {
+          "type": "array",
+          "description": "Resultados de la comparación entre pares de registros de bases distintas (cross-source). Vacío para singletons y para clusters sin par entre bases.",
+          "items": { "$ref": "#/$defs/score" }
+        }
+      }
+    },
+
+    "item": {
+      "type": "object",
+      "description": "Un elemento del cluster: su fuente, los campos derivados usados para comparar, y el registro crudo original.",
+      "required": ["item", "source", "linking_values", "record"],
+      "additionalProperties": false,
+      "properties": {
+        "item": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Id estable del registro dentro del cluster (0-based). scores.items lo referencia."
+        },
+        "source": {
+          "type": "string",
+          "enum": ["Económico", "Comorbilidad", "Trabajo Social"],
+          "description": "Base de datos de origen del registro."
+        },
+        "linking_values": {
+          "type": "object",
+          "description": "Campos derivados/normalizados usados como entrada de la comparación.",
+          "required": ["nombre_norm", "exp"],
+          "additionalProperties": false,
+          "properties": {
+            "nombre_norm": {
+              "type": "string",
+              "description": "Nombre del paciente normalizado, campo principal de comparación."
+            },
+            "exp": {
+              "type": ["integer", "null"],
+              "description": "Expediente del registro. null cuando el origen no lo registró."
+            }
+          }
+        },
+        "record": {
+          "type": "object",
+          "description": "Registro crudo original completo de la fuente.",
+          "additionalProperties": true
+        }
+      }
+    },
+
+    "score": {
+      "type": "object",
+      "description": "Puntaje de la comparación entre dos items del cluster mediante un método nombrado.",
+      "required": ["method", "items", "value"],
+      "additionalProperties": false,
+      "properties": {
+        "method": {
+          "type": "string",
+          "description": "Nombre del método de comparación (función empaquetada). Su definición, campos y rango están en el catálogo metodos_comparacion.json.",
+          "examples": ["jw_nombre", "lev_nombre"]
+        },
+        "items": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": { "type": "integer", "minimum": 0 },
+          "description": "Par de ids 'item' de los dos registros comparados (i < j)."
+        },
+        "value": {
+          "type": "number",
+          "description": "Valor que devuelve el método de comparación."
+        }
+      }
+    }
+  }
+}
