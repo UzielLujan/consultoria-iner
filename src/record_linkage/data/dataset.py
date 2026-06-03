@@ -192,7 +192,7 @@ def build_dataset(
     perfil: str,
     step: str,
     use_block_tokens: bool = True,
-    skip_null: bool = False,
+    skip_null: bool = True,
     umbral_jw: float = 0.88,
     umbral_lev: float = 0.85,
     output_name: Optional[str] = None,
@@ -421,10 +421,19 @@ def _step_finalize(
     records_df = records_df.copy()
     records_df["entity_id"] = entity_ids
 
-    # Parquet final — mismo esquema que dataset.py v1
+    # Dos parquets de salida:
+    #   1. output/<variant>/dataset.parquet  ← incluye `text` (consumer: BE/CE de tesis).
+    #      Cambia con la variante de serialización.
+    #   2. output/entity_ids.parquet          ← solo entity_id (consumer: consultoría — JSON, reporte).
+    #      Invariante entre variantes: el union-find no toca `text`.
     df_output = records_df[["record_id", "source_db", "text", "entity_id"]]
     output_path.parent.mkdir(parents=True, exist_ok=True)
     df_output.to_parquet(output_path, engine="pyarrow", index=False, compression="snappy")
+
+    entity_ids_path = output_path.parent.parent / "entity_ids.parquet"
+    records_df[["record_id", "source_db", "entity_id"]].to_parquet(
+        entity_ids_path, engine="pyarrow", index=False, compression="snappy"
+    )
 
     # Transiciones de criterio/decision para el estado final del pipeline:
     #   1. Auto-confirmados (llave_exacta, metrica_clasica) con decision vacío → decision=match.
@@ -449,6 +458,7 @@ def _step_finalize(
 
     _print_finalize_summary(df_output, review_df)
     print(f"✓ Parquet final: {output_path}")
+    print(f"✓ entity_ids: {entity_ids_path}")
     print(f"✓ pairs_for_review.xlsx regenerado con entity_id: {xlsx_path}")
 
     return df_output
