@@ -7,18 +7,18 @@ Pasos:
                        → produce `<perfil>/output/<variant>/dataset.parquet`
 
 Modos de serialización (4 variantes, definidas por la combinación de flags):
+    tok_skipnull   — con tokens [BLK_*], omitir columnas con nulo  [DEFAULT]
     tok_keepnull   — con tokens [BLK_*], conservar nulos como placeholder NULL
-    tok_skipnull   — con tokens [BLK_*], omitir columnas con nulo
-    notok_keepnull — sin tokens, conservar nulos
     notok_skipnull — sin tokens, omitir nulos
+    notok_keepnull — sin tokens, conservar nulos
 
-Por default: con tokens, conservar nulos (→ tok_keepnull).
+Por default: con tokens, omitir nulos (→ tok_skipnull).
 
 Uso:
     python scripts/run_dataset.py --step classify --perfil default
     python scripts/run_dataset.py --step finalize --perfil default
-    python scripts/run_dataset.py --step finalize --perfil default --skip-null
-    python scripts/run_dataset.py --step finalize --perfil default --no-special-tokens --skip-null
+    python scripts/run_dataset.py --step finalize --perfil default --keep-null
+    python scripts/run_dataset.py --step finalize --perfil default --no-special-tokens --keep-null
 
 Umbrales (calibrados empíricamente):
     --umbral-jw   0.88   Jaro-Winkler mínimo para metrica_clasica
@@ -71,9 +71,10 @@ def parse_args():
         help="Serializar sin tokens [BLK_*]. Aplica al texto generado en classify y/o finalize.",
     )
     parser.add_argument(
-        "--skip-null",
+        "--keep-null",
         action="store_true",
-        help="Omitir columnas con valor nulo en la serialización (texto más compacto).",
+        help="Conservar columnas con valor nulo en la serialización (placeholder NULL). "
+             "Default omite los nulos (texto más compacto).",
     )
     parser.add_argument(
         "--output-name",
@@ -102,7 +103,7 @@ def main():
         perfil=args.perfil,
         step=args.step,
         use_block_tokens=not args.no_special_tokens,
-        skip_null=args.skip_null,
+        skip_null=not args.keep_null,
         umbral_jw=args.umbral_jw,
         umbral_lev=args.umbral_lev,
         output_name=args.output_name,
