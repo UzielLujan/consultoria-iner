@@ -1,0 +1,49 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "record-linkage"
+version = "0.1.0"
+description = "Hybrid neural architectur for entity resolution in clinical databases"
+requires-python = ">=3.11"
+
+dependencies = [
+    # --- Modelos y NLP ---
+    "torch>=2.0",                    # base de todo, redes neuronales
+    "transformers>=4.35",            # BERT, RoBERTa, BETO — Etapas 1 y 2
+    "sentence-transformers>=2.2",    # SBERT, arquitectura siamesa — Etapa 1
+    "tokenizers>=0.15",              # tokenización rápida, dependencia de transformers
+
+    # --- Datos ---
+    "pandas>=2.0",                   # manipulación de CSVs y DataFrames
+    "pyarrow>=14.0",                 # lectura/escritura de .parquet
+    "numpy>=1.24",                   # operaciones matriciales
+    "rapidfuzz>=3.0",                # métricas clásicas: Jaro-Winkler, Levenshtein (etiquetado v2)
+
+    # --- Búsqueda vectorial ---
+    # "faiss-cpu>=1.7",                # indexación ANN para inferencia
+                                     # en el HPC cambiar a faiss-gpu
+
+    # --- Aprendizaje contrastivo ---
+    "scikit-learn>=1.3",             # métricas de evaluación (F1, precision, recall)
+
+    # --- Visualización ---
+    "matplotlib>=3.7",               # curvas de loss y figuras estáticas (PNG/SVG)
+    "umap-learn>=0.5",               # reducción de dimensión 768 → 2D/3D del espacio métrico
+    "plotly>=5.18",                  # scatter 3D interactivo (HTML) del espacio de embeddings
+
+    # --- Configuración ---
+    "python-dotenv>=1.0",            # carga de .env para rutas
+]
+
+[project.optional-dependencies]
+dev = [
+    "jupyter>=1.0",       # notebooks
+    "ipykernel>=6.0",     # kernel de jupyter para el entorno
+    "pytest>=7.0",        # unit tests
+    "ruff>=0.1",          # linter y formatter moderno (reemplaza flake8 + black)
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/record_linkage"]

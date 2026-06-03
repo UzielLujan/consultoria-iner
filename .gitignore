@@ -1,0 +1,47 @@
+# entorno
+.env
+__pycache__/
+*.pyc
+*.pyo
+.ipynb_checkpoints/
+
+# documentación
+/*.md
+!/README.md
+
+# artefactos ML
+*.pt
+*.bin
+*.faiss
+*.parquet
+
+# outputs
+dist/
+*.egg-info/
+.eggs/
+
+# sistema
+.DS_Store
+*.png
+*.jpg
+
+# Obsidian
+.obsidian/
+.trash/
+
+# Claude context
+CLAUDE.md
+
+# docs anexos
+docs/Anexos/
+docs/presentation/
+docs/
+
+# notebooks
+notebooks/
+
+# bitácora
+MEMORY.md
+
+# logs
+logs/
