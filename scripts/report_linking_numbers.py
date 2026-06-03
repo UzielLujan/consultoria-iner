@@ -27,8 +27,12 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 from math import comb
 from pathlib import Path
+
+# Prioriza el src/ local sobre cualquier instalación editable del paquete en el env.
+sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker
@@ -49,8 +53,8 @@ _SOURCES = ["Económico", "Comorbilidad", "Trabajo Social"]
 # Carga de artefactos
 # ─────────────────────────────────────────────────────────────────────────────
 
-def load_artifacts(perfil: str, variant: str):
-    """Carga raw CSVs, dataset.parquet (entity_id), records_interim, xlsx editado."""
+def load_artifacts(perfil: str):
+    """Carga raw CSVs, entity_ids.parquet, records_interim, xlsx editado."""
     paths = perfil_paths(perfil)
 
     raw_econo = pd.read_csv(RAW_FILES["econo"])
@@ -58,7 +62,7 @@ def load_artifacts(perfil: str, variant: str):
     raw_ts    = pd.read_csv(RAW_FILES["trabajo_social"])
     raw_ts    = raw_ts.loc[:, ~raw_ts.columns.str.contains("^Unnamed")]
 
-    dataset = pd.read_parquet(paths["output"] / variant / "dataset.parquet")
+    dataset = pd.read_parquet(paths["output"] / "entity_ids.parquet")
     records = pd.read_parquet(paths["interim"] / "records_interim.parquet")
     review  = pd.read_excel(
         paths["interim"] / "pairs_for_review.xlsx",
@@ -451,8 +455,6 @@ def main() -> None:
     ap.add_argument("--perfil", default="default",
                     help="Perfil bajo PROCESSED_DIR/<perfil>/ del que se leen artefactos y al "
                          "que se escribe deliverables/report_numbers.json. Default: 'default'.")
-    ap.add_argument("--variant", default="tok_skipnull",
-                    help="Subdir bajo output/ de donde leer dataset.parquet (default: tok_skipnull).")
     ap.add_argument("--umbral-jw", type=float, default=0.88)
     ap.add_argument("--umbral-lev", type=float, default=0.85)
     ap.add_argument("--no-figures", action="store_true",
@@ -461,7 +463,7 @@ def main() -> None:
                     help="No imprimir tablas; sólo escribir JSON")
     args = ap.parse_args()
 
-    art = load_artifacts(args.perfil, args.variant)
+    art = load_artifacts(args.perfil)
 
     # Reconstruir pairs clasificados desde clean CSVs (cifra independiente de cualquier parquet cacheado)
     paths = perfil_paths(args.perfil)
