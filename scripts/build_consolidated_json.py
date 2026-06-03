@@ -1,13 +1,13 @@
 #!/usr/bin/env python
-"""Entrypoint: construye consolidated_entities.json (entregable INER, Perfil A).
+"""Entrypoint: construye consolidated_entities.json (entregable INER).
 
-Lee los artefactos del pipeline de etiquetado v2 (Ruta A) y los CSV crudos, agrupa por
-entity_id, y escribe el JSON consolidado entity-centric en el perfil de salida.
+Lee los artefactos del pipeline + los CSV crudos, agrupa por entity_id, y escribe el
+JSON consolidado entity-centric en `<perfil>/deliverables/`.
 
-Insumos (perfil canónico `tesis`, layout clean/interim/output):
-  - entity_id  ← output/<variant>/dataset.parquet   (idéntico entre variantes; union-find)
+Insumos:
+  - entity_id            ← output/entity_ids.parquet      (invariante entre variantes)
   - nombre_norm / exp_int ← interim/records_interim.parquet
-  - record crudo ← ~/Data/INER/raw/  (alineado por record_id; preprocessing no reordena filas)
+  - record crudo          ← ~/Data/INER/raw/  (alineado por record_id; preprocessing no reordena filas)
 
 Salida: <PROCESSED_DIR>/<perfil>/deliverables/consolidated_entities_<schema>.json
 
@@ -20,8 +20,13 @@ Uso:
 import argparse
 import json
 import re
+import sys
+from pathlib import Path
 
 import pandas as pd
+
+# Prioriza el src/ local sobre cualquier instalación editable del paquete en el env.
+sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from record_linkage.config import RAW_FILES, perfil_paths
 from record_linkage.data.consolidation import build_entity_objects
@@ -60,9 +65,6 @@ def main() -> None:
     ap.add_argument("--perfil", default="default",
                     help="Perfil bajo PROCESSED_DIR/<perfil>/ del que se leen interim/output "
                          "y al que se escriben deliverables/. Default: 'default'.")
-    ap.add_argument("--variant", default="tok_skipnull",
-                    help="Subdir bajo output/ de donde leer dataset.parquet (default: tok_skipnull). "
-                         "entity_id es invariante entre variantes; basta con elegir una.")
     ap.add_argument("--schema-version", default="v2", choices=["v1", "v2"],
                     help="v2 (oficial): items anidado + scores recalculados; v1: histórico")
     ap.add_argument("--indent", type=int, default=2,
@@ -72,16 +74,16 @@ def main() -> None:
     args = ap.parse_args()
 
     paths = perfil_paths(args.perfil)
-    dataset = pd.read_parquet(paths["output"] / args.variant / "dataset.parquet")
+    entity_ids = pd.read_parquet(paths["output"] / "entity_ids.parquet")
     records_interim = pd.read_parquet(paths["interim"] / "records_interim.parquet")
 
     # Validar alineación record_id/source_db entre las dos fuentes keyed por record_id.
-    if not dataset["record_id"].equals(records_interim["record_id"]):
-        raise ValueError("record_id desalineado entre dataset y records_interim")
-    if not dataset["source_db"].equals(records_interim["source_db"]):
-        raise ValueError("source_db desalineado entre dataset y records_interim")
+    if not entity_ids["record_id"].equals(records_interim["record_id"]):
+        raise ValueError("record_id desalineado entre entity_ids y records_interim")
+    if not entity_ids["source_db"].equals(records_interim["source_db"]):
+        raise ValueError("source_db desalineado entre entity_ids y records_interim")
 
-    records_meta = dataset[["record_id", "source_db", "entity_id"]].merge(
+    records_meta = entity_ids[["record_id", "source_db", "entity_id"]].merge(
         records_interim[["record_id", "nombre_norm", "exp_int"]], on="record_id"
     )
 
