@@ -20,11 +20,15 @@ import argparse
 import csv
 import json
 import shutil
+import sys
+from pathlib import Path
 
-from record_linkage.config import DOCS_DIR, perfil_paths
+# Prioriza el src/ local sobre cualquier instalación editable del paquete en el env.
+sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
+
+from record_linkage.config import perfil_paths
 from record_linkage.data.comparison_methods import REGISTRY
-
-_SCHEMA_NAME = "consolidated_entities.schema.json"
+from record_linkage.data.consolidation import SCHEMA_PATH
 
 _TYPE_MAP = {
     "integer": "int", "number": "float", "string": "str",
@@ -76,8 +80,7 @@ def main() -> None:
                          "Default: 'default'.")
     args = ap.parse_args()
 
-    schema_path = DOCS_DIR / _SCHEMA_NAME
-    schema = json.loads(schema_path.read_text(encoding="utf-8"))
+    schema = json.loads(SCHEMA_PATH.read_text(encoding="utf-8"))
     defs = schema.get("$defs", {})
 
     rows: list = []
@@ -102,9 +105,9 @@ def main() -> None:
     metodos_path = out_dir / "metodos_comparacion.json"
     metodos_path.write_text(json.dumps(metodos, ensure_ascii=False, indent=2), encoding="utf-8")
 
-    # 3. Copia del schema al bundle del entregable
-    schema_copy = out_dir / _SCHEMA_NAME
-    shutil.copyfile(schema_path, schema_copy)
+    # 3. Copia del schema master al bundle del entregable
+    schema_copy = out_dir / SCHEMA_PATH.name
+    shutil.copyfile(SCHEMA_PATH, schema_copy)
 
     print(f"✓ {csv_path}  ({len(rows)} filas)")
     print(f"✓ {metodos_path}  ({len(metodos)} métodos)")
