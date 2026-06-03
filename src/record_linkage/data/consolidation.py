@@ -46,11 +46,16 @@ histórico (arrays paralelos `linked_items`/`records`, scores extraídos de `pai
 """
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any, Optional
 
 import pandas as pd
 
 from record_linkage.data.comparison_methods import REGISTRY
+
+# Schema JSON master (editado a mano; fuente de verdad). Vive con este módulo porque
+# describe exactamente lo que `build_entity_objects` produce.
+SCHEMA_PATH: Path = Path(__file__).parent / "consolidated_entities.schema.json"
 
 # Métodos clásicos a exponer en `scores`, en orden estable por par.
 # (nombre_en_json, columna_en_pairs_classified)
