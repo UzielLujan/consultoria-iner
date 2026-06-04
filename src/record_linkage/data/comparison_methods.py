@@ -4,18 +4,18 @@ Cada método es una función NOMBRADA que compara dos `items` de un cluster y de
 numérico, o `None` si no aplica a ese par (p.ej. compara un campo que esas dos bases no comparten).
 El generador (`consolidation`) itera este registro sobre los pares cross-source de cada cluster.
 
-Diseño abierto, según Mireles: `method` es "el nombre de una función empaquetada que incluye todos
-los pasos intermedios". Agregar un método = registrar una función nueva, sin tocar el schema del JSON.
+Diseño abierto: `method` es el nombre de una función empaquetada que incluye todos los pasos
+intermedios. Agregar un método = registrar una función nueva, sin tocar el schema del JSON.
 La estructura queda lista para:
   - composites que combinan campos,
   - comparación de otros campos compartidos entre bases,
-  - `cos_biencoder` — similitud coseno del Bi-Encoder sobre el `text` serializado de cada registro
-    (mencionado por Mireles). Punto de extensión previsto; no cableado aquí (requiere modelo/embeddings).
+  - `cos_biencoder` — similitud coseno de un modelo de embeddings sobre el `text` serializado
+    de cada registro. Punto de extensión previsto; no implementado aquí (requiere modelo/embeddings).
 
-Los métodos NO usan el expediente como compuerta. Dentro de un cluster todos los registros ya
-comparten expediente por construcción (la generación de candidatos fue exp-gated), así que un
-`jw-exp` (`return 0 si difieren exp`) sería redundante con `jw_nombre`. El `exp` queda como dato
-visible en `linking_values`/`record`, nunca como filtro dentro del método.
+Los métodos NO usan el expediente como criterio de comparación. Dentro de un cluster todos los
+registros ya comparten expediente por construcción (el filtrado inicial de candidatos fue por
+expediente compartido), así que un `jw-exp` sería redundante. El `exp` queda como dato visible
+en `linking_values`/`record`, nunca como score.
 
 Un `item` es el dict ensamblado por `consolidation`: {item, source, linking_values, record}.
 """
