@@ -1,4 +1,4 @@
-"""Entity type counting utilities for record linkage analysis."""
+"""Clasificación de entidades por número de registros que las componen."""
 
 import pandas as pd
 
