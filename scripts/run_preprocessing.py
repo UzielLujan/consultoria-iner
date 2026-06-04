@@ -11,13 +11,8 @@ Para agregar un perfil nuevo basta con definir `profile_<name>(df, csv)` en
 """
 
 import argparse
-import sys
-from pathlib import Path
 
 import pandas as pd
-
-# Agregar src/ al path para que funcione desde cualquier directorio
-sys.path.insert(0, str(Path(__file__).parent.parent / 'src'))
 
 from record_linkage.config import RAW_FILES, PROCESSED_DIR, perfil_paths, check_paths
 from record_linkage.data import preprocessing

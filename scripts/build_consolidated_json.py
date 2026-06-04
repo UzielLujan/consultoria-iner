@@ -20,13 +20,8 @@ Uso:
 import argparse
 import json
 import re
-import sys
-from pathlib import Path
 
 import pandas as pd
-
-# Prioriza el src/ local sobre cualquier instalación editable del paquete en el env.
-sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from record_linkage.config import RAW_FILES, perfil_paths
 from record_linkage.data.consolidation import build_entity_objects

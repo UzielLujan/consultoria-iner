@@ -27,10 +27,6 @@ Umbrales (calibrados empíricamente):
 
 import argparse
 import sys
-from pathlib import Path
-
-# Agregar src/ al path para que funcione desde cualquier directorio
-sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from record_linkage.config import perfil_paths
 from record_linkage.data.dataset import build_dataset

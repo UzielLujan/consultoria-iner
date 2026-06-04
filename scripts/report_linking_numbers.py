@@ -24,12 +24,8 @@ from __future__ import annotations
 
 import argparse
 import json
-import sys
 from math import comb
 from pathlib import Path
-
-# Prioriza el src/ local sobre cualquier instalación editable del paquete en el env.
-sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker

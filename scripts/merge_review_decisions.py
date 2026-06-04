@@ -19,13 +19,9 @@ El xlsx nuevo se reescribe in-place con styling completo
 """
 
 import argparse
-import sys
 from pathlib import Path
 
 import pandas as pd
-
-sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
-
 from record_linkage.data.dataset import _write_review_xlsx
 
 

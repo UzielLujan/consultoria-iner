@@ -20,11 +20,6 @@ import argparse
 import csv
 import json
 import shutil
-import sys
-from pathlib import Path
-
-# Prioriza el src/ local sobre cualquier instalación editable del paquete en el env.
-sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from record_linkage.config import perfil_paths
 from record_linkage.data.comparison_methods import REGISTRY
