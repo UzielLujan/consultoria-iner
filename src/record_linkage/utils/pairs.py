@@ -1,4 +1,4 @@
-"""Construction and classification of candidate record pairs for entity resolution."""
+"""Construcción y clasificación de pares candidatos de registros para ligado de entidades."""
 
 import pandas as pd
 from rapidfuzz.distance import JaroWinkler
@@ -51,7 +51,7 @@ def build_pairs_df(
         - Los pares NaN (exp NaN en Económico, mismo nombre_norm en Comor o TS) se
           marcan con nan_exp=True y exp_shared=pd.NA. Solo Eco contribuye NaN porque
           Comor y TS no tienen expedientes NaN tras el preprocesamiento.
-        - Los record_id son índices globales asignados aquí; dataset.py los unifica
+        - Los record_id son índices globales asignados aquí; _step_finalize los unifica
           al construir el parquet final.
         - entity_id NO se asigna aquí — depende de classify_pairs() y assign_entity_ids().
     """
