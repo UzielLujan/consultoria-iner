@@ -42,7 +42,6 @@ consultoria-iner/
 │   ├── config.py              # Rutas vía perfil_paths(perfil) → {clean, interim, output, deliverables}
 │   ├── data/
 │   │   ├── preprocessing.py   # Módulos M0–M7; profile_default = M0(strip)→M1→M4(TS)→M5
-│   │   ├── pairs.py *         # build_pairs_df + classify_pairs (en utils/)
 │   │   ├── dataset.py         # _step_classify + _step_finalize + build_dataset (orquestador)
 │   │   ├── serialization.py   # serialize_record con 4 variantes (tok/notok × keep/skip null)
 │   │   ├── consolidation.py   # build_entity_objects → JSON entity-centric
@@ -165,13 +164,15 @@ python scripts/run_preprocessing.py --perfil <nombre>
 python scripts/run_dataset.py --step classify --perfil default
 # → interim/{records_interim, pairs_classified}.parquet + pairs_for_review.xlsx
 ```
-- Paso 2. Revisión manual del `.xlsx`, solo decisiones de pares `no_confirmado`
+
+- Paso 2. Revisión manual del `.xlsx` — solo columna `decision` en pares `no_confirmado`
+
+- Paso 3. Aplicar decisiones y serializar
 
 ```bash
 python scripts/run_dataset.py --step finalize --perfil default
 # → output/entity_ids.parquet + output/tok_skipnull/dataset.parquet
 ```
-- Paso 2 — aplicar decisiones y serializar
 
 
 Salvaguarda: `--step classify` está bloqueado si ya existe `pairs_for_review.xlsx` (protege las decisiones manuales). Para forzar re-clasificar hay que borrar el xlsx manualmente.
@@ -287,5 +288,4 @@ Validables vía `python scripts/report_linking_numbers.py --perfil default`:
 ## Notas
 
 - Los CSVs crudos del INER **no se publican** por confidencialidad. Sin acceso a `$INER_DATA_ROOT/raw/`, el pipeline no se puede ejecutar de extremo a extremo, pero el código, la documentación de flujo y el JSON Schema sí son auditables.
-- El bundle entregado a los Doctores reside en `deliverables/`; el JSON `consolidated_entities_v2.json` es la versión oficial; `v1` se conserva como histórico.
-- Repositorio en cierre activo. Documentación adicional sobre el flujo de datos y las decisiones de diseño se mantiene como material interno del proyecto.
+- Los artefactos generados se encuentran en `deliverables/` bajo el perfil activo. El JSON `consolidated_entities_v2.json` es la versión oficial; `v1` se conserva como histórico.
