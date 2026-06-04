@@ -1,4 +1,4 @@
-"""Name normalization utilities for entity matching."""
+"""Utilidades de normalización de nombres para ligado de entidades."""
 
 import re
 import unicodedata
