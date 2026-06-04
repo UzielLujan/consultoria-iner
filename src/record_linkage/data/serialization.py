@@ -1,4 +1,4 @@
-"""Serialization of tabular records to text sequences for MNRL training and zero-shot evaluation."""
+"""Serialización de registros tabulares a secuencias de texto para ligado de entidades."""
 
 from typing import List
 
@@ -99,11 +99,10 @@ def _serialize_block(row: pd.Series, block_cols: List[str], block_name: str,
         block_name: nombre del bloque (ej: "[BLK_ID]")
         use_block_tokens: si False, omite tokens especiales (para zero-shot)
         skip_null: si True, omite las columnas con valor nulo (no emite placeholder NULL).
-                   Eje independiente de use_block_tokens para experimento 2×2.
 
     Returns:
-        Fine-tuning:  "[BLK_*] [COL] col1 [VAL] val1 [COL] col2 [VAL] val2 ..."
-        Zero-shot:    "col1: val1 col2: val2 ..."
+        Con tokens especiales:   "[BLK_*] [COL] col1 [VAL] val1 [COL] col2 [VAL] val2 ..."
+        Sin tokens especiales:   "col1: val1 col2: val2 ..."
         Bloque vacío: "" en ambos casos — se omite completamente de la secuencia
     """
     block_values = []
@@ -142,14 +141,14 @@ def serialize_record(row: pd.Series, csv_name: str,
     Args:
         row: Una fila de pandas (pd.Series con nombres de columnas)
         csv_name: Nombre del CSV — debe ser exactamente 'comorbilidad', 'econo' o 'trabajo_social'
-        use_block_tokens: True → incluye tokens [BLK_*] (entrenamiento fine-tuned)
-                          False → texto limpio sin tokens (zero-shot / baseline)
+        use_block_tokens: True → incluye tokens [BLK_*] en la secuencia.
+                          False → texto plano sin tokens especiales.
         skip_null: True → omite columnas con valor nulo (texto más compacto).
                    False → emite placeholder NULL para columnas vacías.
 
     Returns:
-        Fine-tuning: "[BLK_ID] [COL] nombre [VAL] Juan García [BLK_ADMIN] [COL] expediente [VAL] 12345 ..."
-        Zero-shot:   "nombre: Juan García expediente: 12345 ..."
+        Con tokens especiales:  "[BLK_ID] [COL] nombre [VAL] Juan García [BLK_ADMIN] [COL] expediente [VAL] 12345 ..."
+        Sin tokens especiales:  "nombre: Juan García expediente: 12345 ..."
         Bloques sin datos se omiten completamente de la secuencia.
     """
     blocks_def = SEMANTIC_BLOCKS.get(csv_name)
@@ -162,7 +161,7 @@ def serialize_record(row: pd.Series, csv_name: str,
         if block_name in blocks_def:
             block_cols = blocks_def[block_name]
 
-            # Priorizar NOMBRE_COMPLETO en Trabajo Social si está disponible (Perfiles Tesis1, Tesis2, Iner)
+            # Priorizar NOMBRE_COMPLETO en Trabajo Social si está disponible (producido por M4)
             if csv_name == 'trabajo_social' and block_name == '[BLK_ID]' and 'NOMBRE_COMPLETO' in row.index:
                 block_cols = ["NOMBRE_COMPLETO"] + [c for c in block_cols if c not in ["APELLIDO PATERNO", "APELLIDO MATERNO", "NOMBRE"]]
 
