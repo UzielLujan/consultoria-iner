@@ -43,8 +43,6 @@ from record_linkage.config import RAW_FILES, perfil_paths
 from record_linkage.utils.entities import count_entity_types
 from record_linkage.utils.pairs import build_pairs_df, classify_pairs
 
-# Salida canónica de figuras (estándar del repo: DATA_DIR/outputs/figures/)
-REPORTE_FIGURAS = Path.home() / "Data" / "INER" / "outputs" / "figures"
 
 _SOURCES = ["Económico", "Comorbilidad", "Trabajo Social"]
 
@@ -495,9 +493,10 @@ def main() -> None:
 
     # Figuras
     if not args.no_figures:
-        REPORTE_FIGURAS.mkdir(parents=True, exist_ok=True)
-        venn_path = REPORTE_FIGURAS / "venn_entidades.png"
-        dist_path = REPORTE_FIGURAS / "distribucion_entidades.png"
+        fig_dir = out_dir / "figures"
+        fig_dir.mkdir(parents=True, exist_ok=True)
+        venn_path = fig_dir / "venn_entidades.png"
+        dist_path = fig_dir / "distribucion_entidades.png"
         render_venn(D, venn_path)
         render_distribucion(D, dist_path)
         print(f"✓ Figura: {venn_path}")
