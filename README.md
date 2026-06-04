@@ -1,6 +1,6 @@
 # consultoria-iner
 
-Pipeline de procesamiento, etiquetado y consolidación de las tres bases de datos COVID-19 del INER en un único artefacto entity-centric. Componente de consultoría del proyecto de investigación en Record Linkage desarrollado en el marco de la maestría en Cómputo Estadístico del CIMAT Unidad Monterrey. Se distribuye como repositorio independiente del componente de modelado neural (Bi-Encoder, Cross-Encoder, evaluación y calibración), que vive en otro repositorio y consume el `dataset.parquet` producido aquí.
+Pipeline de procesamiento, etiquetado y consolidación de las tres bases de datos COVID-19 del INER en un único artefacto entity-centric. Componente de consultoría del proyecto de investigación en Record Linkage desarrollado en el marco de la maestría en Cómputo Estadístico del CIMAT Unidad Monterrey. Se distribuye como repositorio independiente del componente de modelado, que vive en otro repositorio y consume el `dataset.parquet` producido aquí.
 
 ---
 
@@ -17,7 +17,7 @@ El INER mantiene tres CSVs originales de pacientes COVID-19 sin llave de identif
 Este repo provee dos artefactos derivados a partir de los crudos:
 
 1. **`consolidated_entities_v2.json`** (entregable principal INER) — arreglo de **15,283 entidades únicas**, cada una un cluster de registros vinculados al mismo paciente. Validable contra `consolidated_entities.schema.json` (JSON Schema Draft 2020-12).
-2. **`dataset.parquet`** (insumo para la arquitectura Bi-Encoder / Cross-Encoder del componente de modelado) — versión serializada del ground truth con 11,466 pares positivos confirmados, lista para entrenamiento de modelos.
+2. **`dataset.parquet`** (insumo para el componente de modelado) — versión serializada del ground truth con 11,466 pares positivos confirmados, lista para entrenamiento de modelos de ligado de entidades.
 
 ---
 
@@ -33,7 +33,7 @@ consultoria-iner/
 │   ├── run_preprocessing.py        # M0–M7 modular → CSVs limpios
 │   ├── run_dataset.py              # classify + finalize → entity_ids + dataset.parquet
 │   ├── show_pair.py                # Inspector de pares para revisión manual
-│   ├── merge_review_decisions.py   # Preserva decisiones manuales tras refactor
+│   ├── merge_review_decisions.py   # Si cambian los pares candidatos transfiere decisiones manuales de un xlsx ya revisado a uno recién regenerado.
 │   ├── build_consolidated_json.py  # → consolidated_entities_v{1,2}.json
 │   ├── build_data_dictionary.py    # → Diccionario_Final_INER.csv + metodos_comparacion.json + copia del schema
 │   └── report_linking_numbers.py   # Cifras canónicas + figuras del reporte
@@ -62,10 +62,18 @@ consultoria-iner/
 ### 1. Entorno
 
 ```bash
-micromamba activate <env>     # o el manager que prefieras
-pip install -e .              # editable install del paquete record_linkage
+conda create -n consultoria-iner python=3.11 -y
+conda activate consultoria-iner
+pip install -e .
 ```
-El flag `-e` instala record_linkage en modo editable. Dependencias de desarrollo (jupyter, pytest, ruff) se instalan con uv pip install -e ".[dev]".
+
+Para incluir herramientas de desarrollo (jupyter, pytest, ruff):
+
+```bash
+pip install -e ".[dev]"
+```
+
+> **Nota:** El archivo `pyproject.toml` describe el paquete y sus dependencias. Al ejecutar `pip install -e .`, pip lee `pyproject.toml`, instala las dependencias listadas e instala el paquete local `record_linkage` en modo editable: `import record_linkage` resuelve directamente a `src/record_linkage/` sin copiar archivos. Cualquier cambio en `src/` se refleja de inmediato sin reinstalar.
 
 ### 2. Variable de entorno `INER_DATA_ROOT`
 
@@ -124,14 +132,14 @@ $INER_DATA_ROOT/
        ▼
 [4] OUTPUT                    (output/)
        ├── entity_ids.parquet           [record_id, source_db, entity_id]  (consultoría)
-       └── <variant>/dataset.parquet    [record_id, source_db, text, entity_id]  (insumo para Bi-Encoder / Cross-Encoder)
+       └── <variant>/dataset.parquet    [record_id, source_db, text, entity_id]  (insumo para el componente de modelado)
        │
        │  build_consolidated_json.py + build_data_dictionary.py + report_linking_numbers.py
        ▼
 [5] DELIVERABLES              (deliverables/)
        ├── consolidated_entities_v2.json     # 15,283 entidades, schema v2 (oficial)
        ├── consolidated_entities_v1.json     # histórico, schema v1
-       ├── consolidated_entities.schema.json # copia del master
+       ├── consolidated_entities.schema.json # diccionario de datos del JSON consolidado (JSON Schema Draft 2020-12)
        ├── Diccionario_Final_INER.csv        # proyección del schema
        ├── metodos_comparacion.json          # catálogo de métodos JW/Lev
        └── report_numbers.json               # cifras canónicas del reporte
@@ -209,7 +217,7 @@ python scripts/show_pair.py 8749 14123 Económico Comorbilidad
 
 El **`entity_id`** es invariante entre variantes (union-find no depende del texto serializado). Por eso `entity_ids.parquet` se escribe una sola vez en `output/`, mientras `dataset.parquet` con la columna `text` vive en `output/<variant>/`.
 
-Los entregables JSON, diccionario y reporte leen solo `entity_ids.parquet` — **son agnósticos a la variante**. La variante solo importa para el componente de modelado (entrenamiento Bi-Encoder / Cross-Encoder).
+Los entregables JSON, diccionario y reporte leen solo `entity_ids.parquet` — **son agnósticos a la variante**. La variante solo importa para el componente de modelado.
 
 ---
 
