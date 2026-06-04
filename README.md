@@ -1,193 +1,291 @@
-# entity-resolution-nlp
+# consultoria-iner
 
-Sistema de ligado de registros (Record Linkage) basado en aprendizaje profundo y NLP, aplicado a bases de datos de pacientes COVID-19 del INER. Proyecto de tesis de maestría en Cómputo Estadístico — CIMAT Unidad Monterrey.
+Pipeline de procesamiento, etiquetado y consolidación de las tres bases de datos COVID-19 del INER en un único artefacto entity-centric. Componente de consultoría del proyecto de investigación en Record Linkage desarrollado en el marco de la maestría en Cómputo Estadístico del CIMAT Unidad Monterrey. Se distribuye como repositorio independiente del componente de modelado neural (Bi-Encoder, Cross-Encoder, evaluación y calibración), que vive en otro repositorio y consume el `dataset.parquet` producido aquí.
 
 ---
 
 ## Contexto
 
-El INER cuenta con tres bases de datos independientes de pacientes COVID-19 que no comparten una llave de identificación 100% confiable. Este proyecto construye un sistema moderno para vincularlas a nivel semántico usando modelos de lenguaje pre-entrenados (Bi-Encoder + Cross-Encoder), sin depender de coincidencias exactas de campos.
+El INER mantiene tres CSVs originales de pacientes COVID-19 sin llave de identificación 100% confiable entre bases:
 
-| CSV | Registros | Contenido |
-|-----|-----------|-----------|
-| Diagnósticos y Comorbilidades | 4,278 | diagnóstico principal, comorbilidades, fechas |
-| Costos y Económico | 4,632 | costos de atención, datos socioeconómicos |
-| Trabajo Social | 14,796 | datos demográficos, familia, situación social |
+| Base | Registros | Contenido |
+|------|-----------|-----------|
+| Económico (Costos) | 4,632 | costos de atención, datos socioeconómicos, demográficos |
+| Comorbilidad | 4,278 | diagnóstico principal, comorbilidades, fechas hospitalarias |
+| Trabajo Social | 14,796 | datos familiares, situación social, escolaridad |
 
-Ground truth: **4,341 entidades vinculables** (presentes en 2+ bases), **9,855 pares positivos confirmados** por llave determinista `(expediente, nombre_v2_normalizado)`.
+Este repo provee dos artefactos derivados a partir de los crudos:
+
+1. **`consolidated_entities_v2.json`** (entregable principal INER) — arreglo de **15,283 entidades únicas**, cada una un cluster de registros vinculados al mismo paciente. Validable contra `consolidated_entities.schema.json` (JSON Schema Draft 2020-12).
+2. **`dataset.parquet`** (insumo para la arquitectura Bi-Encoder / Cross-Encoder del componente de modelado) — versión serializada del ground truth con 11,466 pares positivos confirmados, lista para entrenamiento de modelos.
 
 ---
 
 ## Estructura del repositorio
 
 ```
-entity-resolution-nlp/
-├── run_beto_baseline.sh       # Script SLURM — Bi-Encoder BETO
-├── run_roberta_bio.sh         # Script SLURM — Bi-Encoder RoBERTa-biomedical
+consultoria-iner/
+├── README.md
+├── pyproject.toml
+├── .env.example               # Plantilla para INER_DATA_ROOT
+│
+├── scripts/                   # Entrypoints CLI
+│   ├── run_preprocessing.py        # M0–M7 modular → CSVs limpios
+│   ├── run_dataset.py              # classify + finalize → entity_ids + dataset.parquet
+│   ├── show_pair.py                # Inspector de pares para revisión manual
+│   ├── merge_review_decisions.py   # Preserva decisiones manuales tras refactor
+│   ├── build_consolidated_json.py  # → consolidated_entities_v{1,2}.json
+│   ├── build_data_dictionary.py    # → Diccionario_Final_INER.csv + metodos_comparacion.json + copia del schema
+│   └── report_linking_numbers.py   # Cifras canónicas + figuras del reporte
 │
 ├── src/record_linkage/
-│   ├── config.py              # Rutas centralizadas (DATA_ROOT, PROCESSED_DIR, etc.)
+│   ├── config.py              # Rutas vía perfil_paths(perfil) → {clean, interim, output, deliverables}
 │   ├── data/
-│   │   ├── preprocessing.py   # Módulos M0–M7, perfiles iner/tesis0/tesis1/tesis2
-│   │   ├── dataset.py         # Serialización bloques semánticos + entity_id + .parquet
-│   │   ├── augmentation.py    # 5 operadores on-the-fly: shuffle, mask, typos, delete
-│   │   ├── splitting.py       # Partición train/val/test estratificada por entidad
-│   │   └── consolidation.py   # Base relacional INER (pendiente de implementación)
-│   ├── models/
-│   │   ├── biencoder.py       # build_biencoder() + encode_texts() — backbone intercambiable
-│   │   └── crossencoder.py    # Cross-Encoder DITTO — Etapa 2 (pendiente)
-│   ├── training/
-│   │   ├── train_biencoder.py # Entrenamiento MNRL: warm init, LR diferencial por capa, fp16
-│   │   └── bce.py             # Binary Cross-Entropy — Etapa 2 (pendiente)
-│   ├── utils/
-│   │   └── mnrl.py            # Diagnóstico visual: matrices de similitud por batch
-│   └── inference/
-│       ├── retrieval.py       # Búsqueda vectorial ANN (pendiente)
-│       └── reranking.py       # Re-ranking Cross-Encoder (pendiente)
+│   │   ├── preprocessing.py   # Módulos M0–M7; profile_default = M0(strip)→M1→M4(TS)→M5
+│   │   ├── pairs.py *         # build_pairs_df + classify_pairs (en utils/)
+│   │   ├── dataset.py         # _step_classify + _step_finalize + build_dataset (orquestador)
+│   │   ├── serialization.py   # serialize_record con 4 variantes (tok/notok × keep/skip null)
+│   │   ├── consolidation.py   # build_entity_objects → JSON entity-centric
+│   │   ├── comparison_methods.py  # REGISTRY: jw_nombre, lev_nombre
+│   │   └── consolidated_entities.schema.json   # Schema master (editable a mano)
+│   └── utils/
+│       ├── normalization.py   # normalizar_nombre_v2
+│       ├── pairs.py           # build_pairs_df, classify_pairs
+│       └── entities.py        # count_entity_types
 │
-├── scripts/
-│   ├── download_model.py      # Descarga modelos de HuggingFace como SentenceTransformer
-│   ├── run_preprocessing.py   # CLI: limpieza de CSVs crudos
-│   ├── run_dataset.py         # CLI: construcción del dataset .parquet
-│   ├── run_splitting.py       # CLI: partición train/val/test
-│   ├── run_train_biencoder.py # CLI: entrenamiento Bi-Encoder con MNRL
-│   ├── evaluate_zeroshot.py   # Evaluación zero-shot: Hit@K, MRR, Δ separabilidad
-│   └── train_crossencoder.py  # CLI Cross-Encoder (pendiente)
-│
-├── notebooks/                 # EDAs y análisis de duplicados
-└── docs/                      # Documentación del proyecto
+└── tests/
 ```
 
 ---
 
-## Inicio rápido
+## Setup
 
 ### 1. Entorno
 
 ```bash
-micromamba create -n tesis python=3.11 -c conda-forge -y
-micromamba activate tesis
-pip install uv
-uv pip install -e .
+micromamba activate <env>     # o el manager que prefieras
+pip install -e .              # editable install del paquete record_linkage
 ```
+El flag `-e` instala record_linkage en modo editable. Dependencias de desarrollo (jupyter, pytest, ruff) se instalan con uv pip install -e ".[dev]".
 
-El flag `-e` instala `record_linkage` en modo editable — los cambios en `src/` se reflejan sin reinstalar. Dependencias de desarrollo (jupyter, pytest, ruff) se instalan con `uv pip install -e ".[dev]"`.
+### 2. Variable de entorno `INER_DATA_ROOT`
 
-### 2. Descargar modelos
-
-Los modelos se descargan localmente como SentenceTransformer con tokens especiales ya registrados, para poder transferirlos al cluster sin acceso a internet.
+Las bases originales y los artefactos derivados viven **fuera del repo** (los CSVs crudos no se publican por confidencialidad). Define la raíz de datos en un `.env` en la raíz del repo:
 
 ```bash
-python scripts/download_model.py --all
+cp .env.example .env
+# Editar .env:
+INER_DATA_ROOT=/ruta/a/tus/datos/INER
 ```
 
-Modelos disponibles: `BETO`, `RoBERTa-biomedical`, `paraphrase-multilingual`.
+Default si no se define: `~/Data/INER`.
 
-### 3. Preprocesamiento
+### 3. Layout de datos esperado
 
-```bash
-# Verificar rutas
-python scripts/run_preprocessing.py --perfil tesis1 --check-paths
-
-# Limpiar CSVs
-python scripts/run_preprocessing.py --perfil tesis1
 ```
-
-Perfiles disponibles:
-
-| Perfil | Módulos | Uso |
-|--------|---------|-----|
-| `iner` | M0(upper)→M1→M2→M3→M4→M5→M6→M7 | Entregables de consultoría INER |
-| `tesis0` | M0(strip)→M1 | Base para evaluación zero-shot |
-| `tesis1` | M0(strip)→M1→M4(si TS)→M5 | Entrenamiento — columnas originales del CSV |
-| `tesis2` | M0(strip)→M1→M2→M4(si TS)→M5→M7 | Limpieza + renombrado semántico |
-
-### 4. Construir dataset
-
-```bash
-# Fine-tuning (con tokens [BLK_*])
-python scripts/run_dataset.py --perfil tesis1
-
-# Zero-shot (texto col:val sin tokens)
-python scripts/run_dataset.py --perfil tesis0 --no-special-tokens
-```
-
-Salida: `dataset.parquet` con columnas `record_id`, `source_db`, `text`, `entity_id`.
-
-### 5. Partición train/val/test
-
-```bash
-python scripts/run_splitting.py --perfil tesis1
-```
-
-Estratificada por entidad (sin entity leakage). Proporciones por defecto: 70/15/15.
-
-### 6. Evaluación zero-shot
-
-```bash
-python scripts/evaluate_zeroshot.py --model BETO
-python scripts/evaluate_zeroshot.py --all
-```
-
-Métricas: Hit@K (K∈{1,5,10,20,50}), MRR y Δ separabilidad sobre los 9,855 pares confirmados cross-database.
-
-### 7. Entrenamiento (local / HPC)
-
-```bash
-# Smoke test local (1 época, batch pequeño)
-python scripts/run_train_biencoder.py --model BETO --epochs 1 --batch-size 8 --n-aug 0
-
-# HPC — editar run_beto_baseline.sh con los parámetros deseados y lanzar con sbatch
-sbatch run_beto_baseline.sh
+$INER_DATA_ROOT/
+├── raw/                                      # CSVs originales (no incluidos)
+│   ├── INER_COVID19_CostoPacientes_Econo.csv
+│   ├── INER_COVID19_Pacientes_DiagnosticoComorbilidad.csv
+│   └── INER_COVID19_TrabajoSocial.csv
+└── processed/<perfil>/                       # creado por el pipeline
+    ├── clean/                                # output de preprocessing
+    ├── interim/                              # output de classify
+    ├── output/                               # output de finalize (entity_ids + variantes)
+    └── deliverables/                         # output de los builders (bundle INER)
 ```
 
 ---
 
-## Serialización
-
-Cada registro tabular se convierte en una secuencia de texto estructurada con bloques semánticos:
+## Flujo de datos
 
 ```
-[BLK_ID] [COL] nombre [VAL] GARCIA LOPEZ MARIA [BLK_ADMIN] [COL] expediente [VAL] 12345 [BLK_CLIN] ...
+[1] RAW CSVs                  ($INER_DATA_ROOT/raw/)
+       │
+       │  run_preprocessing.py  (profile_default: M0→M1→M4→M5)
+       ▼
+[2] CLEAN CSVs                (clean/)
+       │
+       │  run_dataset.py --step classify
+       │     • normaliza nombres (utils/normalization.normalizar_nombre_v2)
+       │     • construye pares candidatos cross-CSV (utils/pairs.build_pairs_df)
+       │     • clasifica con cascada llave_exacta → metrica_clasica → no_confirmado
+       ▼
+[3] INTERIM                   (interim/)
+       ├── records_interim.parquet      [record_id, source_db, text, exp_int, nombre_norm]
+       ├── pairs_classified.parquet     [record_id_a, record_id_b, jw, lev, criterio, ...]
+       └── pairs_for_review.xlsx        editable; columna 'decision' ∈ {match, no_match}
+       │
+       │  ⟵ REVISIÓN MANUAL: 514 pares 'no_confirmado' marcados a mano
+       │
+       │  run_dataset.py --step finalize
+       │     • aplica decisiones manuales
+       │     • union-find → entity_id
+       │     • re-serializa la columna `text` con flags de serialización
+       ▼
+[4] OUTPUT                    (output/)
+       ├── entity_ids.parquet           [record_id, source_db, entity_id]  (consultoría)
+       └── <variant>/dataset.parquet    [record_id, source_db, text, entity_id]  (insumo para Bi-Encoder / Cross-Encoder)
+       │
+       │  build_consolidated_json.py + build_data_dictionary.py + report_linking_numbers.py
+       ▼
+[5] DELIVERABLES              (deliverables/)
+       ├── consolidated_entities_v2.json     # 15,283 entidades, schema v2 (oficial)
+       ├── consolidated_entities_v1.json     # histórico, schema v1
+       ├── consolidated_entities.schema.json # copia del master
+       ├── Diccionario_Final_INER.csv        # proyección del schema
+       ├── metodos_comparacion.json          # catálogo de métodos JW/Lev
+       └── report_numbers.json               # cifras canónicas del reporte
 ```
-
-Con `--no-special-tokens` (zero-shot):
-
-```
-nombre: GARCIA LOPEZ MARIA expediente: 12345 ...
-```
-
-Los tokens `[BLK_ID]`, `[BLK_CLIN]`, `[BLK_GEO]`, `[BLK_ADMIN]`, `[BLK_SOCIO]`, `[COL]` y `[VAL]` se registran en el tokenizador al descargar los modelos.
 
 ---
 
-## Documentación
+## Comandos del pipeline
 
-| Documento | Contenido |
-|-----------|-----------|
-| `MEMORY.md` | Bitácora del proyecto: historial de fases, métricas, preguntas abiertas |
-| `docs/design_decisions.md` | Decisiones técnicas tomadas y su justificación |
-| `docs/Metodologia_arquitectura.md` | Arquitectura neuronal: SBERT, DITTO, MNRL, serialización |
-| `docs/Contexto_Maestro_Proyecto.md` | Visión general, roadmap, rutas de artefactos |
-| `docs/Contexto_Consultoria_INER.md` | Objetivos y entregables de la consultoría |
-| `docs/entorno_y_dependencias.md` | Entorno Python: micromamba, uv, pyproject.toml |
+Asume `INER_DATA_ROOT` configurado y el env activo. Todos los scripts soportan `--perfil <nombre>` (default `default`).
+
+### Preprocesamiento
+
+```bash
+python scripts/run_preprocessing.py
+# → $INER_DATA_ROOT/processed/default/clean/{econo,comorbilidad,trabajo_social}_clean.csv
+```
+
+Para limpiar con otro perfil (hay que definirlo en `preprocessing.py`):
+
+```bash
+python scripts/run_preprocessing.py --perfil <nombre>
+```
+
+### Etiquetado: classify + finalize
+
+- Paso 1. Clasificación automática de pares cross-CSV
+
+```bash
+python scripts/run_dataset.py --step classify --perfil default
+# → interim/{records_interim, pairs_classified}.parquet + pairs_for_review.xlsx
+```
+- Paso 2. Revisión manual del `.xlsx`, solo decisiones de pares `no_confirmado`
+
+```bash
+python scripts/run_dataset.py --step finalize --perfil default
+# → output/entity_ids.parquet + output/tok_skipnull/dataset.parquet
+```
+- Paso 2 — aplicar decisiones y serializar
+
+
+Salvaguarda: `--step classify` está bloqueado si ya existe `pairs_for_review.xlsx` (protege las decisiones manuales). Para forzar re-clasificar hay que borrar el xlsx manualmente.
+
+### Construcción del bundle de entregables
+
+```bash
+python scripts/build_consolidated_json.py --perfil default                          # schema v2 (oficial)
+python scripts/build_consolidated_json.py --perfil default --schema-version v1      # schema v1 (histórico)
+python scripts/build_data_dictionary.py --perfil default                            # Diccionario_Final + métodos + schema
+python scripts/report_linking_numbers.py --perfil default                           # Cifras + figuras
+```
+
+### Inspección de pares durante revisión manual
+
+```bash
+python scripts/show_pair.py <record_id_a> <record_id_b> <source_a> <source_b>
+# Ejemplo:
+python scripts/show_pair.py 8749 14123 Económico Comorbilidad
+```
 
 ---
 
-## Estado actual
+## Modos de serialización
 
-- [x] EDA de las tres bases (Comorbilidad, Económico, Trabajo Social)
-- [x] Ground truth — 4,341 entidades vinculables, 9,855 pares confirmados cross-database
-- [x] Pipeline de preprocesamiento (perfiles iner, tesis0, tesis1, tesis2)
-- [x] Serialización con bloques semánticos → `dataset.parquet` (23,706 registros)
-- [x] Partición train/val/test estratificada por entidad
-- [x] Augmentación on-the-fly (5 operadores: shuffle_blocks, shuffle_columns, mask, typos, delete_span)
-- [x] Bi-Encoder — `build_biencoder()` con backbone intercambiable (BETO, RoBERTa-biomedical)
-- [x] Pipeline de entrenamiento MNRL (warm init, LR diferencial por capa, mixed precision fp16, early stopping)
-- [x] Evaluación zero-shot — Hit@K, MRR, Δ separabilidad
-- [x] Experimentación en HPC — búsqueda de hiperparámetros con BETO y RoBERTa-biomedical
-- [ ] Modelo final Bi-Encoder — pendiente de realizar entrenamiento definitivo y definición del pipeline de evaluación y métricas finales
-- [ ] Pipeline de evaluación fine-tuned — diseño e implementación pendiente
-- [ ] Rediseño de augmentación — operadores actuales no simulan variación real entre CSVs del INER
-- [ ] Cross-Encoder como re-ranker (Etapa 2)
-- [ ] Indexación vectorial ANN e inferencia en producción
+`run_dataset.py --step finalize` produce **una variante** de `dataset.parquet` por corrida, definida por dos flags ortogonales:
+
+| Variante | Flags | Característica |
+|----------|-------|----------------|
+| **`tok_skipnull`** | (default) | con tokens `[BLK_*]`, omite columnas nulas |
+| `tok_keepnull`   | `--keep-null` | con tokens, conserva nulos como placeholder `NULL` |
+| `notok_skipnull` | `--no-special-tokens` | sin tokens, omite nulos |
+| `notok_keepnull` | `--no-special-tokens --keep-null` | sin tokens, conserva nulos |
+
+El **`entity_id`** es invariante entre variantes (union-find no depende del texto serializado). Por eso `entity_ids.parquet` se escribe una sola vez en `output/`, mientras `dataset.parquet` con la columna `text` vive en `output/<variant>/`.
+
+Los entregables JSON, diccionario y reporte leen solo `entity_ids.parquet` — **son agnósticos a la variante**. La variante solo importa para el componente de modelado (entrenamiento Bi-Encoder / Cross-Encoder).
+
+---
+
+## Etiquetado: cascada de criterios
+
+Cada par candidato cross-CSV recibe un `criterio`:
+
+1. **`llave_exacta`** — comparten expediente + `nombre_norm` idéntico (9,855 pares).
+2. **`metrica_clasica`** — comparten expediente + (Jaro-Winkler ≥ 0.88 ∨ Levenshtein ≥ 0.85) sobre `nombre_norm` (1,118 pares).
+3. **`no_confirmado`** — no resueltos por las dos primeras capas; van a revisión manual (514 pares → 493 match + 21 no_match).
+
+Cobertura adicional: pares Económico con `EXP` nulo cruzados por nombre contra Comorbilidad y Trabajo Social.
+
+**Total positivos confirmados: 11,466.**
+
+---
+
+## Schema del JSON consolidado
+
+`src/record_linkage/data/consolidated_entities.schema.json` es la **fuente de verdad** del entregable, editable a mano. JSON Schema Draft 2020-12.
+
+Estructura (resumida):
+
+```
+entity_id      int            identificador único del cluster
+cluster_size   int            número de items
+decision       str|null       veredicto manual a nivel cluster (null por default)
+items[]        objeto         un objeto por registro:
+   ├── item           int        id estable dentro del cluster (0-based)
+   ├── source         str        "Económico" | "Comorbilidad" | "Trabajo Social"
+   ├── linking_values object     { nombre_norm, exp }
+   └── record         objeto     registro crudo original (heterogéneo por fuente)
+scores[]       objeto         comparaciones cross-source dentro del cluster:
+   ├── method  str             nombre del método (ver metodos_comparacion.json)
+   ├── items   [i, j]          ids item comparados
+   └── value   float           score
+```
+
+Validación:
+
+```python
+import json, jsonschema
+schema = json.load(open(".../consolidated_entities.schema.json"))
+data   = json.load(open(".../consolidated_entities_v2.json"))
+jsonschema.validate(data, schema)
+```
+
+---
+
+## Métodos de comparación
+
+Registrados en `src/record_linkage/data/comparison_methods.py::REGISTRY`. Vigentes:
+
+| Nombre | Campos | Rango | Función |
+|--------|--------|-------|---------|
+| `jw_nombre`  | `nombre_norm` | [0, 1] | Jaro-Winkler normalizada |
+| `lev_nombre` | `nombre_norm` | [0, 1] | Levenshtein normalizada |
+
+Cada método es una función nombrada que recibe dos `item`s y devuelve un score (o `None` si no aplica). Agregar un método nuevo = registrarlo en `REGISTRY` — el catálogo `metodos_comparacion.json` se regenera automáticamente en el siguiente `build_data_dictionary.py`.
+
+---
+
+## Cifras canónicas (perfil `default`)
+
+Validables vía `python scripts/report_linking_numbers.py --perfil default`:
+
+- 23,706 registros totales (4,632 + 4,278 + 14,796)
+- 11,487 pares candidatos cross-CSV
+- 9,855 + 1,118 + 514 = 11,487 (clasificación)
+- 11,466 match + 21 no_match (post revisión manual)
+- **15,283 entidades únicas** tras union-find
+- 4,605 entidades vinculables (≥2 CSV): 1,184 en exactamente 2 + 3,421 en las 3 bases
+
+---
+
+## Notas
+
+- Los CSVs crudos del INER **no se publican** por confidencialidad. Sin acceso a `$INER_DATA_ROOT/raw/`, el pipeline no se puede ejecutar de extremo a extremo, pero el código, la documentación de flujo y el JSON Schema sí son auditables.
+- El bundle entregado a los Doctores reside en `deliverables/`; el JSON `consolidated_entities_v2.json` es la versión oficial; `v1` se conserva como histórico.
+- Repositorio en cierre activo. Documentación adicional sobre el flujo de datos y las decisiones de diseño se mantiene como material interno del proyecto.
