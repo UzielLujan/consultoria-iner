@@ -14,12 +14,8 @@ Acepta nombres de source en formato display ('Económico', 'Comorbilidad',
 """
 
 import argparse
-import sys
-from pathlib import Path
 
 import pandas as pd
-
-sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from record_linkage.config import perfil_paths
 from record_linkage.data.serialization import _format_value
