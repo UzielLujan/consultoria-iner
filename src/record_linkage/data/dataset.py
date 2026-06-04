@@ -1,4 +1,4 @@
-"""Dataset: two-step labeling pipeline that produces entity_id with classified pairs."""
+"""Pipeline de etiquetado en dos pasos: classify y finalize. Produce entity_ids y dataset.parquet."""
 
 from pathlib import Path
 from typing import List, Optional, Union
@@ -333,7 +333,7 @@ def _step_finalize(
         xlsx_path:        pairs_for_review.xlsx con decisiones manuales
         output_path:      ruta completa al parquet final (incluye nombre, no es directorio)
         csv_paths:        si se provee, re-serializa text desde los CSVs limpios con la config indicada.
-                          Si None, usa la columna text pre-existente en records_path (comportamiento legacy).
+                          Si None, usa la columna text pre-existente en records_path.
         use_block_tokens: aplica solo si csv_paths se provee
         skip_null:        aplica solo si csv_paths se provee
     """
@@ -422,9 +422,9 @@ def _step_finalize(
     records_df["entity_id"] = entity_ids
 
     # Dos parquets de salida:
-    #   1. output/<variant>/dataset.parquet  ← incluye `text` (consumer: BE/CE de tesis).
+    #   1. output/<variant>/dataset.parquet  ← incluye `text` (insumo para el componente de modelado).
     #      Cambia con la variante de serialización.
-    #   2. output/entity_ids.parquet          ← solo entity_id (consumer: consultoría — JSON, reporte).
+    #   2. output/entity_ids.parquet          ← solo entity_id (insumo para JSON consolidado y reporte).
     #      Invariante entre variantes: el union-find no toca `text`.
     df_output = records_df[["record_id", "source_db", "text", "entity_id"]]
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -490,7 +490,7 @@ def _print_finalize_summary(df_output: pd.DataFrame, review_df: pd.DataFrame) ->
     print(f"\n  Registros:                       {len(df_output):,}")
     print(f"  Entidades únicas:                {df_output['entity_id'].nunique():,}")
     print(f"  Pares positivos (in-batch):      {int((vc * (vc - 1) // 2).sum()):,}")
-    print(f"  Pares confirmados cross-db:      {cross_db:,}  ← baseline v1: 9,855")
+    print(f"  Pares confirmados cross-db:      {cross_db:,}")
     print(f"\n  Por criterio (post-finalize):")
     print(f"    llave_exacta                   {n_llave_exacta:>6,}")
     print(f"    metrica_clasica                {n_metrica_clasica:>6,}")
