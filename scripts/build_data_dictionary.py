@@ -7,10 +7,10 @@ de documentación del entregable consolidado:
   - Diccionario_Final_INER.csv  — vista plana del schema (`campo | tipo | descripcion`),
     con rutas con puntos. Derivada 100% del schema; no duplica descripciones.
   - metodos_comparacion.json    — catálogo de métodos, desde comparison_methods.REGISTRY.
-  - copia del schema            — en el bundle del entregable (iner/).
+  - copia del schema            — en el bundle del entregable.
 
-El schema (docs/consolidated_entities.schema.json) se edita a mano; este script solo lo
-proyecta. Editar una descripción ahí y re-correr basta para actualizar el CSV.
+El schema (`src/record_linkage/data/consolidated_entities.schema.json`) se edita a mano;
+este script solo lo proyecta. Editar una descripción ahí y re-correr basta para actualizar el CSV.
 
 Uso:
     python scripts/build_data_dictionary.py

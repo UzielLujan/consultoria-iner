@@ -1,19 +1,16 @@
 #!/usr/bin/env python
-"""Cifras canónicas y figuras del Reporte_INER (capítulos 4 y 5).
+"""Cifras canónicas y figuras del entregable INER.
 
-Recalcula desde los artefactos del pipeline v2 (Ruta A) las cifras hardcodeadas
-en el reporte y regenera las figuras (Venn + bar chart de distribución de
-entidades). Reemplaza el cálculo legacy del notebook `Duplicados_INER.ipynb`,
-que estaba en etiquetado v1 (sólo llave exacta) y por tanto desincronizado del
-ground truth final.
+Recalcula desde los artefactos del pipeline las cifras de ligado de registros
+y regenera las figuras (Venn + bar chart de distribución de entidades).
 
 Secciones:
-    [A] Espacio cross-CSV                  → tab:espacio_crosscsv
-    [B] Comparación de espacios            → tab:comparacion_espacios
-    [C] Cascada v2 por cruce               → REEMPLAZA tab:ground_truth
-    [D] Distribución de entidades          → tab:distribucion_entidades
-    [E] Síntesis pares + entidades         → tab:sintesis_espacios
-    [F] Revisión manual por cruce          → REEMPLAZA tab:pares_residuales
+    [A] Espacio cross-CSV        — registros, pares posibles y EXP compartidos por cruce
+    [B] Comparación de espacios  — espacio total vs candidatos filtrados
+    [C] Cascada por cruce        — desglose llave_exacta / metrica_clasica / revision_manual
+    [D] Distribución de entidades
+    [E] Síntesis pares + entidades
+    [F] Revisión manual por cruce
     Figuras:
       • venn_entidades.png
       • distribucion_entidades.png
@@ -147,11 +144,11 @@ def compute_section_B(raw: dict, section_a: dict, n_pares_candidatos_v2: int) ->
 
 
 def compute_section_C(pairs_clf: pd.DataFrame, review: pd.DataFrame) -> dict:
-    """[C] Cascada v2 por cruce — REEMPLAZA tab:ground_truth.
+    """[C] Cascada por cruce — desglose de criterios por par de bases.
 
-    Reporta por cruce CSV (Opción A aprobada): los pares NaN-Económico se
-    fusionan al cruce correspondiente (Econo↔Comor o Econo↔TS) según el target.
-    Distingue cuatro buckets: llave_exacta / metrica_clasica / rev_manual_match / rev_manual_no_match.
+    Los pares NaN-Económico se fusionan al cruce correspondiente (Econo↔Comor o
+    Econo↔TS) según el target. Distingue cuatro buckets: llave_exacta /
+    metrica_clasica / rev_manual_match / rev_manual_no_match.
     """
     # Merge decisiones manuales: clasificación efectiva = decision si está llena, sino criterio.
     decisiones = review.set_index(["record_id_a", "record_id_b"])["decision"].to_dict()
@@ -272,7 +269,7 @@ def compute_section_E(
 
 
 def compute_section_F(pairs_clf: pd.DataFrame, review: pd.DataFrame) -> dict:
-    """[F] Revisión manual por cruce — REEMPLAZA tab:pares_residuales."""
+    """[F] Revisión manual por cruce — pares no_confirmado y sus decisiones."""
     decisiones = review.set_index(["record_id_a", "record_id_b"])["decision"].to_dict()
 
     rows = []
@@ -389,11 +386,11 @@ def print_report(A, B, C, D, E, F) -> None:
     print("═" * 72)
     print(f"  Total incluyendo intra-CSV  (N choose 2):  {B['pares_total_incluye_intra']:>16,}")
     print(f"  Total cross-CSV  (Σ A×B):                  {B['pares_total_cross_csv']:>16,}")
-    print(f"  Candidatos v1 (sólo EXP compartido):       {B['candidatos_exp_compartido']:>16,}")
-    print(f"  Candidatos v2 (+ NaN-Económico por nombre):{B['candidatos_v2_incluye_nan_econo']:>16,}")
+    print(f"  Candidatos (filtrado por EXP compartido):   {B['candidatos_exp_compartido']:>16,}")
+    print(f"  Candidatos total (incluye Eco con EXP nulo):{B['candidatos_v2_incluye_nan_econo']:>15,}")
 
     print("\n" + "═" * 72)
-    print(" [C] Cascada v2 por cruce  (REEMPLAZA tab:ground_truth)")
+    print(" [C] Cascada por cruce")
     print("═" * 72)
     print(f"  {'Cruce':<38} {'l_ex':>6} {'m_cl':>6} {'rm_M':>6} {'rm_N':>6} {'POS':>7} {'CAND':>7}")
     for r in C["rows"]:
@@ -435,7 +432,7 @@ def print_report(A, B, C, D, E, F) -> None:
     print(f"  Mayores    (≥4 registros)        {E['mayores']:>14,}")
 
     print("\n" + "═" * 72)
-    print(" [F] Revisión manual por cruce  (REEMPLAZA tab:pares_residuales)")
+    print(" [F] Revisión manual por cruce")
     print("═" * 72)
     print(f"  {'Cruce':<38} {'Revisados':>10} {'match':>7} {'no_match':>9}")
     for r in F["rows"]:

@@ -1,6 +1,8 @@
 """Inspecciona un par de registros del dataset — herramienta de revisión manual.
 
-Pensado para los pares `no_confirmado` que requieren ojo humano. Lee los CSV `*_clean.csv` de `<perfil>/clean/`, localiza ambos registros por `record_id` y los imprime en formato `col: val` (uno por línea), omitiendo campos nulos.
+Pensado para los pares `no_confirmado` que requieren ojo humano. Lee los CSV
+`*_clean.csv` de `<perfil>/clean/`, localiza ambos registros por `record_id`
+y los imprime en formato `col: val` (uno por línea), omitiendo campos nulos.
 
 Uso (paste directo desde el xlsx — columnas record_id_a, record_id_b, source_a, source_b):
 
@@ -122,7 +124,7 @@ def show_pair(rid_a: int, src_a: str, rid_b: int, src_b: str, dfs, offsets) -> N
 
 def parse_args():
     p = argparse.ArgumentParser(
-        description="Inspecciona un par de registros del dataset v2 "
+        description="Inspecciona un par de registros del dataset "
                     "(lectura on-demand para revisión manual de 'no_confirmado')."
     )
     p.add_argument("record_id_a", type=int, help="record_id del primer registro (col 1 del xlsx)")
