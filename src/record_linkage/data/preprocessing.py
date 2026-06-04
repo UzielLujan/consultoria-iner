@@ -44,7 +44,7 @@ def m0_normalize_text(df: pd.DataFrame, strip: bool = True, upper: bool = True) 
 #
 # Problema: el sistema fuente de Comorbilidad codificó mal la 'Ñ' como '?'.
 # Siempre: '?' → 'Ñ' (restaura el carácter original dañado por el sistema fuente).
-# normalizar_nombre_v2 en dataset.py maneja Ñ→N para el matching de entity_ids,
+# normalizar_nombre_v2 en utils/normalization.py maneja Ñ→N para el matching de entity_ids,
 # por lo que no hay razón para degradar el carácter en el CSV de salida.
 
 def m1_fix_encoding(df: pd.DataFrame, csv: str = 'comorbilidad') -> pd.DataFrame:
@@ -141,7 +141,7 @@ def m2_clean_nombres(df: pd.DataFrame, csv: str) -> pd.DataFrame:
 #   - int64 (0/1) — más compacto, directo
 #   - "Verdadero"/"Falso" representación semántica en español
 #     para que modelos de lenguaje capturen la semántica de presencia/ausencia.
-#     Implementar en dataset.py durante serialize_record(), no aquí.
+#     Implementar en serialization.py durante serialize_record(), no aquí.
 
 def _extraer_anios(texto):
     if pd.isna(texto):
@@ -185,10 +185,6 @@ def m3_fix_types(df: pd.DataFrame, csv: str) -> pd.DataFrame:
 # =============================================================================
 #
 # Trabajo Social — concatenación de los 3 campos de nombre. Opera sobre nombres originales (pre-M7).
-#
-# Comorbilidad — `obesidad` vs `obesidad1`:
-#   Difieren en ~13.7% de registros. `obesidad` aplica criterio clínico más amplio.
-#   Decisión de cuál conservar: pendiente de criterio clínico del INER.
 
 def m4_concat_nombre_ts(df: pd.DataFrame) -> pd.DataFrame:
     df = df.copy()
@@ -231,15 +227,13 @@ def m5_drop_columns(df: pd.DataFrame, csv: str) -> pd.DataFrame:
 # M6 — Normalización de nombres  |  CSV: los 3  | Opcional, para comparación de nombres
 # =============================================================================
 #
-# Función definitiva extraída de Duplicados_INER (normalizar_nombre_v2).
-# Integra el efecto de M1 + M2 en un paso de normalización para comparación.
-# En el pipeline M1 y M2 ya se aplicaron antes, por lo que aquí
-# el replace('?', 'N') es redundante pero inocuo.
-#
 # Aplicación por CSV:
 #   - Comorbilidad: sobre `nombre` (ya corregido por M1 y M2)
 #   - Económico:    sobre `NOMBRE_DEL_PACIENTE` (ya limpiado por M2)
 #   - Trabajo Social: sobre `NOMBRE_COMPLETO` (producido por M4)
+#
+# _normalizar_nombre_v2 es una copia histórica local. La función canónica vive
+# en utils/normalization.py y es la que usa el pipeline de etiquetado.
 
 def _normalizar_nombre_v2(texto: str) -> str:
     if pd.isna(texto):
@@ -332,5 +326,3 @@ def profile_default(df: pd.DataFrame, csv: str) -> pd.DataFrame:
         df = m4_concat_nombre_ts(df)
     df = m5_drop_columns(df, csv)
     return df
-
-
