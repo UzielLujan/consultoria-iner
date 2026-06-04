@@ -1,11 +1,9 @@
-"""Generación del JSON consolidado entity-centric — entregable INER (Perfil A).
+"""Generación del JSON consolidado entity-centric — entregable INER.
 
-Materializa el "Producto 3: Base de Datos Consolidada" del INER como un único
-arreglo JSON: un objeto por `entity_id`. Supersede el stub relacional previo
-(esquema multi-tabla SQL) por decisión documentada en `design_decisions.md`
-→ "Ubicación del generador del JSON consolidado entity-centric".
+Materializa la base de datos consolidada del INER como un único arreglo JSON:
+un objeto por `entity_id`.
 
-Schema v2 (oficial — refinado de `propuesta_entregable_JSON.md`, 2026-05-27):
+Schema v2 (oficial):
 
     {
       "entity_id": int,
@@ -35,10 +33,10 @@ Notas de diseño:
   - **Solo pares cross-source.** Se puntea cada par de items de bases distintas dentro
     del cluster. Los pares intra-fuente (dedup de la misma base) NO generan score; aun
     así, esos registros SÍ aparecen en `items` (membresía completa de la entidad).
-  - **El expediente no es compuerta** en ningún método (los Dres. rechazaron filtrar por
-    expediente). `exp` queda como dato visible en `linking_values`/`record`.
+  - **El expediente no genera score.** Su rol es el filtrado inicial de pares candidatos
+    (llave_exacta); `exp` aparece en `linking_values` como dato de auditoría, no en `scores`.
   - Heterogeneidad de columnas: cada `record` conserva solo las columnas propias de su
-    fuente; no se imponen columnas comunes ni nulos artificiales (Contexto_Consultoria §7.1).
+    fuente; no se imponen columnas comunes ni nulos artificiales.
   - NaN / NaT / pd.NA → null.
 
 Compatibilidad: `build_entity_objects(..., schema_version="v1")` reproduce el schema
