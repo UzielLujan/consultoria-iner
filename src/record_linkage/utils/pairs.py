@@ -171,7 +171,7 @@ def classify_pairs(
     Las decisiones manuales (match/no_match) NO se aplican aquí; se incorporan en
     _step_finalize leyendo el xlsx editado.
 
-    jw_score y lev_score se calculan para los 11,486 pares independientemente del
+    jw_score y lev_score se calculan para los 11,487 pares independientemente del
     criterio asignado — útil para auditoría del umbral y para poblar el array
     `scores` del JSON consolidado.
 
