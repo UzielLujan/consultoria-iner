@@ -145,6 +145,10 @@ def compute_section_C(pairs_clf: pd.DataFrame, review: pd.DataFrame) -> dict:
     Los pares NaN-Económico se fusionan al cruce correspondiente (Econo↔Comor o
     Econo↔TS) según el target. Distingue cuatro buckets: llave_exacta /
     metrica_clasica / rev_manual_match / rev_manual_no_match.
+
+    Supuesto: la revisión manual está completa — el xlsx ya pasó por el flujo
+    completo del pipeline (--step finalize sin pares no_confirmado pendientes).
+    Un par no_confirmado SIN decisión caería al bucket rev_manual_match.
     """
     # Merge decisiones manuales: clasificación efectiva = decision si está llena, sino criterio.
     decisiones = review.set_index(["record_id_a", "record_id_b"])["decision"].to_dict()
@@ -173,7 +177,7 @@ def compute_section_C(pairs_clf: pd.DataFrame, review: pd.DataFrame) -> dict:
             elif decision == "no_match":
                 bucket = "rev_manual_no_match"
             else:
-                bucket = "rev_manual_match"  # default conservador si quedara vacío
+                bucket = "rev_manual_match"  # asume revisión completa (ver docstring) — verificar --step finalize sin pendientes
         counts[key][bucket] += 1
 
     # Filas ordenadas + total
