@@ -82,7 +82,7 @@ def _json_safe(value: Any) -> Any:
 
 
 def _exp_to_int(exp: Any) -> int | None:
-    """Normaliza un expediente a int o None (los exp NaN-TS de Económico → null)."""
+    """Normaliza un expediente a int o None (los exp NaN de Económico → null)."""
     v = _json_safe(exp)
     return None if v is None else int(v)
 
