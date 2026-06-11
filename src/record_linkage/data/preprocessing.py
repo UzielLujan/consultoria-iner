@@ -161,7 +161,10 @@ def m3_fix_types(df: pd.DataFrame, csv: str) -> pd.DataFrame:
         df['fechaegr'] = pd.to_datetime(df['fechaegr'], errors='coerce')
         cols_binarias = ['obesidad', 'obesidad1', 'cardiopatia', 'diabetes', 'nefropatia', 'eaperge', 'tephap']
         for col in cols_binarias:
-            df[col] = (df[col]).astype('int64', errors='ignore')
+            try:
+                df[col] = df[col].astype('int64')
+            except (ValueError, TypeError):
+                pass  # columnas con NaN se quedan float64 (errors='ignore' está deprecado en pandas 2.x)
     elif csv == 'econo':
         df['FECHA_INGRESO_INER'] = pd.to_datetime(df['FECHA_INGRESO_INER'], errors='coerce')
         df['FECHA_DE_ALTA_MEJORIA'] = pd.to_datetime(df['FECHA_DE_ALTA_MEJORIA'], errors='coerce')
