@@ -61,7 +61,6 @@ def merge_decisions(old_path: Path, new_path: Path) -> None:
     # Estadísticas
     n_old = len(old_df)
     n_new = len(new_df)
-    n_new_pairs = n_new - n_old + n_unmatched_in_old  # pares nuevos = total_new - (pares heredados)
     decision_filled_new = new_df["decision"].notna() & (new_df["decision"] != "")
 
     print(f"\n  Merge completado:")
