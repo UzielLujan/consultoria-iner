@@ -76,7 +76,7 @@ def _pairs_to_review_df(pairs_classified: pd.DataFrame) -> pd.DataFrame:
     Columnas resultantes (en orden):
         record_id_a, record_id_b         → llaves técnicas (se ocultan visualmente)
         source_a, source_b               → identificación del cruce
-        exp                              → expediente compartido (vacío para pares NaN-TS)
+        exp                              → expediente compartido (vacío para pares NaN-Económico)
         nombre_norm_a, nombre_norm_b     → nombres normalizados (lo que jw/lev comparan)
         jw, lev                          → métricas redondeadas a 3 decimales
         criterio                         → clasificación del pipeline (auditoría)
@@ -87,7 +87,7 @@ def _pairs_to_review_df(pairs_classified: pd.DataFrame) -> pd.DataFrame:
         "record_id_b":   pairs_classified["record_id_b"],
         "source_a":      pairs_classified["source_a"],
         "source_b":      pairs_classified["source_b"],
-        "exp":           pairs_classified["exp_a"],  # exp_a == exp_b en cross-CSV; NA para NaN-TS
+        "exp":           pairs_classified["exp_a"],  # exp_a == exp_b en cross-CSV; NA para NaN-Económico
         "nombre_norm_a": pairs_classified["nombre_norm_a"],
         "nombre_norm_b": pairs_classified["nombre_norm_b"],
         "jw":            pairs_classified["jw_score"].round(3),
