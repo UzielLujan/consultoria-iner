@@ -22,6 +22,9 @@ dependencies = [
 
     # --- Configuración ---
     "python-dotenv>=1.0",
+
+    # --- Validación del entregable (snippet de validación del README) ---
+    "jsonschema>=4.0",
 ]
 
 [project.optional-dependencies]
