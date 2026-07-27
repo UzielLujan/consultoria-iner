@@ -114,27 +114,50 @@ def _build_items(recs, raw_by_record_id) -> list[dict]:
             },
             "record": {k: _json_safe(v)
                        for k, v in raw_by_record_id[int(r.record_id)].items()},
+            # Llave TRANSITORIA para métodos que comparan por registro (cos_biencoder).
+            # Se remueve en build_entity_objects antes de serializar — no entra al JSON.
+            "_record_id": int(r.record_id),
         })
     return items
 
 
-def _recompute_scores(items: list[dict], score_decimals: int) -> list[dict]:
-    """Scores v2: recalcula cada método del REGISTRY sobre pares cross-source del cluster."""
+def _recompute_scores(items: list[dict], score_decimals: int,
+                      registry: tuple = REGISTRY,
+                      group_by_pair: bool = False) -> list[dict]:
+    """Scores v2: recalcula cada método del registro sobre pares cross-source del cluster.
+
+    group_by_pair=False (default, formato histórico v2):
+        [{"method": str, "items": [i,j], "value": float}, ...]
+    group_by_pair=True (formato canónico):
+        [{"pair": [i,j], "methods": {method_name: float, ...}}, ...]
+    """
     scores: list[dict] = []
     n = len(items)
     for i in range(n):
         for j in range(i + 1, n):
             if items[i]["source"] == items[j]["source"]:
                 continue  # solo cross-source; intra-fuente no se puntea
-            for method in REGISTRY:
-                val = method.fn(items[i], items[j])
-                if val is None:
-                    continue  # el método no aplica a este par
-                scores.append({
-                    "method": method.name,
-                    "items": [items[i]["item"], items[j]["item"]],
-                    "value": round(float(val), score_decimals),
-                })
+            if group_by_pair:
+                pair_entry: dict = {
+                    "pair": [items[i]["item"], items[j]["item"]],
+                    "methods": {},
+                }
+                for method in registry:
+                    val = method.fn(items[i], items[j])
+                    if val is not None:
+                        pair_entry["methods"][method.name] = round(float(val), score_decimals)
+                if pair_entry["methods"]:
+                    scores.append(pair_entry)
+            else:
+                for method in registry:
+                    val = method.fn(items[i], items[j])
+                    if val is None:
+                        continue
+                    scores.append({
+                        "method": method.name,
+                        "items": [items[i]["item"], items[j]["item"]],
+                        "value": round(float(val), score_decimals),
+                    })
     return scores
 
 
@@ -162,6 +185,8 @@ def build_entity_objects(
     pairs: Optional[pd.DataFrame] = None,
     score_decimals: int = 4,
     schema_version: str = "v2",
+    registry: tuple = REGISTRY,
+    group_scores_by_pair: bool = False,
 ) -> list[dict]:
     """Construye la lista de objetos-entidad del JSON consolidado.
 
@@ -172,8 +197,12 @@ def build_entity_objects(
         pairs: solo requerido en schema_version='v1' (pairs_classified, para extraer scores).
         score_decimals: redondeo de los valores de similitud en `scores`.
         schema_version:
-            'v2' (default) → `items` anidado + scores recalculados (REGISTRY) cross-source.
+            'v2' (default) → `items` anidado + scores recalculados (registry) cross-source.
             'v1' → arrays paralelos `linked_items`/`records` + scores extraídos de `pairs`.
+        registry: tupla de Methods a evaluar en v2 (default: REGISTRY estático jw/lev).
+            Extensible sin tocar el schema, p.ej. `REGISTRY + (make_cos_biencoder_method(ruta),)`.
+        group_scores_by_pair: si True, scores en formato canónico agrupado por par
+            [{"pair":[i,j], "methods":{...}}]; si False (default), formato flat histórico.
 
     Returns:
         Lista de dicts (uno por entity_id), ordenada por entity_id ascendente; dentro de
@@ -196,13 +225,18 @@ def build_entity_objects(
         obj = {"entity_id": int(entity_id), "cluster_size": len(items), "decision": None}
         if schema_version == "v2":
             obj["items"] = items
-            obj["scores"] = _recompute_scores(items, score_decimals)
+            obj["scores"] = _recompute_scores(items, score_decimals, registry, group_scores_by_pair)
         else:  # v1 — arrays paralelos, scores extraídos
             obj["linked_items"] = [
                 {"source": it["source"], "linking_values": it["linking_values"]} for it in items
             ]
             obj["scores"] = _extract_scores(record_ids, pair_scores, score_decimals)
             obj["records"] = [{"source": it["source"], **it["record"]} for it in items]
+
+        # La llave transitoria _record_id ya cumplió su función (lookup de los métodos);
+        # se remueve para que el JSON cumpla el schema sin cambios.
+        for it in items:
+            it.pop("_record_id", None)
 
         objects.append(obj)
 

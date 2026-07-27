@@ -84,25 +84,21 @@
 
     "score": {
       "type": "object",
-      "description": "Puntaje de la comparación entre dos items del cluster mediante un método nombrado.",
-      "required": ["method", "items", "value"],
+      "description": "Resultados de todos los métodos de comparación para un par de registros cross-source.",
+      "required": ["pair", "methods"],
       "additionalProperties": false,
       "properties": {
-        "method": {
-          "type": "string",
-          "description": "Nombre del método de comparación (función empaquetada). Su definición, campos y rango están en el catálogo metodos_comparacion.json.",
-          "examples": ["jw_nombre", "lev_nombre"]
-        },
-        "items": {
+        "pair": {
           "type": "array",
           "minItems": 2,
           "maxItems": 2,
           "items": { "type": "integer", "minimum": 0 },
-          "description": "Par de ids 'item' de los dos registros comparados (i < j)."
+          "description": "Par de ids 'item' de los dos registros comparados (i < j). Referencia items[].item."
         },
-        "value": {
-          "type": "number",
-          "description": "Valor que devuelve el método de comparación."
+        "methods": {
+          "type": "object",
+          "description": "Mapa método → valor. Cada clave es el nombre de un método del catálogo metodos_comparacion.json; el valor es el puntaje devuelto.",
+          "additionalProperties": { "type": "number" }
         }
       }
     }
