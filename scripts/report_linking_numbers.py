@@ -7,7 +7,7 @@ y regenera las figuras (Venn + bar chart de distribución de entidades).
 Secciones:
     [A] Espacio cross-CSV        — registros, pares posibles y EXP compartidos por cruce
     [B] Comparación de espacios  — espacio total vs candidatos filtrados
-    [C] Cascada por cruce        — desglose llave_exacta / metrica_clasica / revision_manual
+    [C] Clasificación por cruce  — desglose llave_exacta / metrica_clasica / revision_manual
     [D] Distribución de entidades
     [E] Síntesis pares + entidades
     [F] Revisión manual por cruce
@@ -140,7 +140,7 @@ def compute_section_B(raw: dict, section_a: dict, n_pares_candidatos_v2: int) ->
 
 
 def compute_section_C(pairs_clf: pd.DataFrame, review: pd.DataFrame) -> dict:
-    """[C] Cascada por cruce — desglose de criterios por par de bases.
+    """[C] Clasificación por cruce — desglose de criterios por par de bases.
 
     Los pares NaN-Económico se fusionan al cruce correspondiente (Econo↔Comor o
     Econo↔TS) según el target. Distingue cuatro buckets: llave_exacta /
@@ -390,7 +390,7 @@ def print_report(A, B, C, D, E, F) -> None:
     print(f"  Candidatos total (incluye Eco con EXP nulo):{B['candidatos_v2_incluye_nan_econo']:>15,}")
 
     print("\n" + "═" * 72)
-    print(" [C] Cascada por cruce")
+    print(" [C] Clasificación por cruce")
     print("═" * 72)
     print(f"  {'Cruce':<38} {'l_ex':>6} {'m_cl':>6} {'rm_M':>6} {'rm_N':>6} {'POS':>7} {'CAND':>7}")
     for r in C["rows"]:
