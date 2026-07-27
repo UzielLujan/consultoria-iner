@@ -15,6 +15,7 @@ este script solo lo proyecta. Editar una descripción ahí y re-correr basta par
 Uso:
     python scripts/build_data_dictionary.py
     python scripts/build_data_dictionary.py --perfil default
+    python scripts/build_data_dictionary.py --cosine    # catálogo incluye cos_biencoder
 """
 import argparse
 import csv
@@ -22,7 +23,7 @@ import json
 import shutil
 
 from record_linkage.config import perfil_paths
-from record_linkage.data.comparison_methods import REGISTRY
+from record_linkage.data.comparison_methods import COS_BIENCODER_INFO, REGISTRY
 from record_linkage.data.consolidation import SCHEMA_PATH
 
 _TYPE_MAP = {
@@ -73,6 +74,9 @@ def main() -> None:
     ap.add_argument("--perfil", default="default",
                     help="Perfil bajo PROCESSED_DIR/<perfil>/deliverables/ al que se escribe. "
                          "Default: 'default'.")
+    ap.add_argument("--cosine", action="store_true",
+                    help="Incluye cos_biencoder en metodos_comparacion.json (usar cuando el "
+                         "JSON consolidado se generó con --cosine).")
     args = ap.parse_args()
 
     schema = json.loads(SCHEMA_PATH.read_text(encoding="utf-8"))
@@ -91,12 +95,19 @@ def main() -> None:
         w.writerow(["campo", "tipo", "descripcion"])
         w.writerows(rows)
 
-    # 2. Catálogo de métodos desde REGISTRY
+    # 2. Catálogo de métodos desde REGISTRY (+ cos_biencoder si el JSON se generó con --cosine)
     metodos = [
         {"name": m.name, "fields": list(m.fields), "rango": list(m.rango),
          "description": m.description}
         for m in REGISTRY
     ]
+    if args.cosine:
+        metodos.append({
+            "name": COS_BIENCODER_INFO["name"],
+            "fields": list(COS_BIENCODER_INFO["fields"]),
+            "rango": list(COS_BIENCODER_INFO["rango"]),
+            "description": COS_BIENCODER_INFO["description"],
+        })
     metodos_path = out_dir / "metodos_comparacion.json"
     metodos_path.write_text(json.dumps(metodos, ensure_ascii=False, indent=2), encoding="utf-8")
 
