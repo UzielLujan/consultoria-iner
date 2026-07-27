@@ -21,12 +21,12 @@
         "cluster_size": {
           "type": "integer",
           "minimum": 1,
-          "description": "Número de registros del cluster (equivale a la longitud de items)."
+          "description": "Número de registros dentro del cluster."
         },
         "decision": {
           "type": ["string", "null"],
           "default": null,
-          "description": "Veredicto manual a nivel cluster (aceptar/rechazar la entidad), null hasta la revisión. El vocabulario exacto de valores se fijará con los revisores."
+          "description": "Veredicto manual a nivel cluster (aceptar/rechazar la entidad), null hasta la revisión."
         },
         "items": {
           "type": "array",
@@ -36,7 +36,7 @@
         },
         "scores": {
           "type": "array",
-          "description": "Resultados de la comparación entre pares de registros de bases distintas (cross-source). Vacío para singletons y para clusters sin par entre bases.",
+          "description": "Valores de las comparaciones entre pares de registros de bases distintas. Vacío para singletons y para clusters sin par entre bases.",
           "items": { "$ref": "#/$defs/score" }
         }
       }
@@ -51,7 +51,7 @@
         "item": {
           "type": "integer",
           "minimum": 0,
-          "description": "Id estable del registro dentro del cluster (0-based). scores.items lo referencia."
+          "description": "Índice del registro dentro del cluster."
         },
         "source": {
           "type": "string",
@@ -60,7 +60,7 @@
         },
         "linking_values": {
           "type": "object",
-          "description": "Campos derivados/normalizados usados como entrada de la comparación.",
+          "description": "Campos usados como entrada de la comparación.",
           "required": ["nombre_norm", "exp"],
           "additionalProperties": false,
           "properties": {
@@ -76,7 +76,7 @@
         },
         "record": {
           "type": "object",
-          "description": "Registro crudo original completo de la fuente.",
+          "description": "Registro original completo.",
           "additionalProperties": true
         }
       }
@@ -93,11 +93,11 @@
           "minItems": 2,
           "maxItems": 2,
           "items": { "type": "integer", "minimum": 0 },
-          "description": "Par de ids 'item' de los dos registros comparados (i < j). Referencia items[].item."
+          "description": "Par de índices de los registros comparados."
         },
         "methods": {
           "type": "object",
-          "description": "Mapa método → valor. Cada clave es el nombre de un método del catálogo metodos_comparacion.json; el valor es el puntaje devuelto.",
+          "description": "Valores obtenidos de los métodos de comparación.",
           "additionalProperties": { "type": "number" }
         }
       }
