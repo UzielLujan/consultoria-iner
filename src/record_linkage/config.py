@@ -29,6 +29,8 @@ SCRIPTS_DIR:   Path = REPO_ROOT / "scripts"
 RAW_DIR:       Path = DATA_ROOT / "raw"
 PROCESSED_DIR: Path = DATA_ROOT / "processed"
 OUTPUTS_DIR:   Path = DATA_ROOT / "outputs"
+# Artefactos externos al pipeline (no generables desde este repo): embeddings del modelo de aprendizaje automático.
+EMBEDDINGS_DIR: Path = DATA_ROOT / "embeddings"
 
 # ── Archivos fuente ───────────────────────────────────────────────────────────
 RAW_FILES = {
@@ -58,11 +60,12 @@ def perfil_paths(perfil: str) -> dict:
 def check_paths() -> None:
     """Imprime el estado de las rutas críticas del proyecto."""
     paths = {
-        "REPO_ROOT":    REPO_ROOT,
-        "DATA_ROOT":    DATA_ROOT,
-        "RAW_DIR":      RAW_DIR,
+        "REPO_ROOT":     REPO_ROOT,
+        "DATA_ROOT":     DATA_ROOT,
+        "RAW_DIR":       RAW_DIR,
         "PROCESSED_DIR": PROCESSED_DIR,
-        "OUTPUTS_DIR":  OUTPUTS_DIR,
+        "OUTPUTS_DIR":   OUTPUTS_DIR,
+        "EMBEDDINGS_DIR": EMBEDDINGS_DIR,
     }
     print("── Rutas del proyecto ──────────────────────")
     for name, path in paths.items():
