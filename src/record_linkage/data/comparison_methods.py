@@ -6,11 +6,16 @@ El generador (`consolidation`) itera este registro sobre los pares cross-source 
 
 Diseño abierto: `method` es el nombre de una función empaquetada que incluye todos los pasos
 intermedios. Agregar un método = registrar una función nueva, sin tocar el schema del JSON.
-La estructura queda lista para:
-  - composites que combinan campos,
-  - comparación de otros campos compartidos entre bases,
-  - `cos_biencoder` — similitud coseno de un modelo de embeddings sobre el `text` serializado
-    de cada registro. Punto de extensión previsto; no implementado aquí (requiere modelo/embeddings).
+La estructura queda lista para composites que combinan campos y comparación de otros campos
+compartidos entre bases.
+
+`cos_biencoder` — similitud coseno entre embeddings del registro completo serializado,
+producidos por el Bi-Encoder fine-tuneado del componente de aprendizaje automático. Es un método OPCIONAL: se activa
+vía `make_cos_biencoder_method(ruta)` (consumido por `build_consolidated_json.py --cosine`),
+que carga `embeddings.parquet [record_id, embedding]` y devuelve el `Method` listo para
+extender el REGISTRY. Los items llevan la llave transitoria `_record_id` (inyectada por
+`consolidation._build_items` y removida antes de serializar el JSON) que este método usa
+para el lookup; jw/lev la ignoran.
 
 Los métodos NO usan el expediente como criterio de comparación. Dentro de un cluster todos los
 registros ya comparten expediente por construcción (el filtrado inicial de candidatos fue por
@@ -22,8 +27,11 @@ Un `item` es el dict ensamblado por `consolidation`: {item, source, linking_valu
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Callable, Optional
+from pathlib import Path
+from typing import Callable, Optional, Union
 
+import numpy as np
+import pandas as pd
 from rapidfuzz.distance import JaroWinkler, Levenshtein
 
 Item = dict
@@ -69,3 +77,43 @@ REGISTRY: tuple[Method, ...] = (
         fn=_lev_nombre,
     ),
 )
+
+
+# ── cos_biencoder — método opcional (requiere embeddings externos del modelo de aprendizaje automático) ───────
+
+# Metadata única, compartida por la factory (Method) y el catálogo (build_data_dictionary).
+COS_BIENCODER_INFO = {
+    "name": "cos_biencoder",
+    "fields": ("record",),
+    "rango": (-1.0, 1.0),
+    "description": (
+        "Similitud coseno entre los embeddings del registro completo serializado, "
+        "producidos por el Bi-Encoder fine-tuneado (BETO + MNRL) del componente de "
+        "aprendizaje automático. Método opcional: requiere embeddings.parquet exportado del checkpoint "
+        "oficial (variante tok_skipnull)."
+    ),
+}
+
+
+def make_cos_biencoder_method(embeddings_path: Union[str, Path]) -> Method:
+    """Carga `embeddings.parquet [record_id, embedding]` y devuelve el Method cos_biencoder.
+
+    Los vectores quedan capturados en el closure de la función del método. Devuelve None
+    para pares donde algún record_id no tiene embedding (contrato "no aplica" del REGISTRY).
+    """
+    embeddings_path = Path(embeddings_path).expanduser()
+    df = pd.read_parquet(embeddings_path)
+    vectors = {
+        int(rid): np.asarray(emb, dtype=np.float32)
+        for rid, emb in zip(df["record_id"], df["embedding"])
+    }
+
+    def _cos_biencoder(a: Item, b: Item) -> Optional[float]:
+        va = vectors.get(a.get("_record_id"))
+        vb = vectors.get(b.get("_record_id"))
+        if va is None or vb is None:
+            return None
+        # Los embeddings exportados ya están L2-normalizados; se renormaliza por robustez.
+        return float(np.dot(va, vb) / (np.linalg.norm(va) * np.linalg.norm(vb)))
+
+    return Method(fn=_cos_biencoder, **COS_BIENCODER_INFO)
