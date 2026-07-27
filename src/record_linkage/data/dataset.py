@@ -10,7 +10,7 @@ from openpyxl.worksheet.datavalidation import DataValidation
 
 from record_linkage.config import perfil_paths
 from record_linkage.data.serialization import serialize_record, serialize_record_zeroshot
-from record_linkage.utils.normalization import normalizar_nombre_v2
+from record_linkage.utils.normalization import normalizar_nombre
 from record_linkage.utils.pairs import _COL_MAP, build_pairs_df, classify_pairs
 
 POSITIVE_CRITERIA = {"llave_exacta", "metrica_clasica"}
@@ -283,7 +283,7 @@ def _step_classify(
                 "source_db":   source,
                 "text":        text,
                 "exp_int":     pd.to_numeric(exp_raw, errors="coerce"),
-                "nombre_norm": normalizar_nombre_v2(row.get(nombre_col, "")),
+                "nombre_norm": normalizar_nombre(row.get(nombre_col, "")),
             })
             record_id += 1
 
@@ -422,7 +422,7 @@ def _step_finalize(
     records_df["entity_id"] = entity_ids
 
     # Dos parquets de salida:
-    #   1. output/<variant>/dataset.parquet  ← incluye `text` (insumo para el componente de modelado).
+    #   1. output/<variant>/dataset.parquet  ← incluye `text` (insumo para el componente de aprendizaje automático).
     #      Cambia con la variante de serialización.
     #   2. output/entity_ids.parquet          ← solo entity_id (insumo para JSON consolidado y reporte).
     #      Invariante entre variantes: el union-find no toca `text`.

@@ -4,7 +4,7 @@ import pandas as pd
 from rapidfuzz.distance import JaroWinkler
 from rapidfuzz.distance import Levenshtein
 
-from record_linkage.utils.normalization import normalizar_nombre_v2
+from record_linkage.utils.normalization import normalizar_nombre
 
 
 # Columnas de expediente y nombre por CSV (nombres exactos después de preprocessing)
@@ -74,7 +74,7 @@ def build_pairs_df(
                 "source":    source_name,
                 "exp_raw":   exp_raw,
                 "exp_int":   pd.to_numeric(exp_raw, errors="coerce"),
-                "nombre_norm": normalizar_nombre_v2(nombre_raw),
+                "nombre_norm": normalizar_nombre(nombre_raw),
             })
             record_id += 1
 
@@ -162,12 +162,12 @@ def classify_pairs(
 ) -> pd.DataFrame:
     """Agrega columna 'criterio' con la etiqueta de clasificación de cada par.
 
-    Aplica una cascada de tres criterios sobre los pares candidatos:
+    Aplica una clasificación secuencial de tres criterios sobre los pares candidatos:
         1. llave_exacta    — nombre_norm_a == nombre_norm_b y nan_exp=False
         2. metrica_clasica — JW(a,b) >= umbral_jw  OR  Lev_ratio(a,b) >= umbral_lev
         3. no_confirmado   — ningún criterio resuelve el par, o nan_exp=True
 
-    Los pares nan_exp=True van directamente a no_confirmado (no se aplica cascada).
+    Los pares nan_exp=True van directamente a no_confirmado (no pasan por las etapas automáticas).
     Las decisiones manuales (match/no_match) NO se aplican aquí; se incorporan en
     _step_finalize leyendo el xlsx editado.
 
@@ -196,7 +196,7 @@ def classify_pairs(
         axis=1,
     )
 
-    # --- Cascada de clasificación ---
+    # --- Etapas de clasificación ---
     criterio = pd.Series([""] * len(result), index=result.index)
 
     # Capa 1: llave_exacta

@@ -6,7 +6,7 @@ import unicodedata
 import pandas as pd
 
 
-def normalizar_nombre_v2(texto) -> str:
+def normalizar_nombre(texto) -> str:
     """Normaliza un nombre de paciente para comparación entre CSVs.
 
     Transformaciones aplicadas (en orden):
