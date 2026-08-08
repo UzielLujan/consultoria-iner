@@ -62,18 +62,24 @@ consultoria-iner/
 ### 1. Entorno
 
 ```bash
-conda create -n consultoria-iner python=3.11 -y
-conda activate consultoria-iner
-pip install -e .
+uv sync
 ```
 
-Para incluir herramientas de desarrollo (jupyter, pytest, ruff):
+`uv sync` crea `.venv/`, resuelve las dependencias declaradas en `pyproject.toml`,
+genera o respeta `uv.lock` e instala el paquete local en modo editable. No se
+requiere Micromamba ni Conda para ejecutar el pipeline local.
+
+Ejecute los entrypoints dentro del entorno administrado por UV:
 
 ```bash
-pip install -e ".[dev]"
+uv run python scripts/run_preprocessing.py --check-paths
 ```
 
-> **Nota:** El archivo `pyproject.toml` describe el paquete y sus dependencias. Al ejecutar `pip install -e .`, pip lee `pyproject.toml`, instala las dependencias listadas e instala el paquete local `record_linkage` en modo editable: `import record_linkage` resuelve directamente a `src/record_linkage/` sin copiar archivos. Cualquier cambio en `src/` se refleja de inmediato sin reinstalar.
+Para herramientas opcionales de desarrollo (Jupyter, pytest y Ruff):
+
+```bash
+uv sync --extra dev
+```
 
 ### 2. Variable de entorno `INER_DATA_ROOT`
 
